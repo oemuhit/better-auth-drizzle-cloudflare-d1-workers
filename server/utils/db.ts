@@ -11,6 +11,7 @@ function createDrizzle(event: H3Event) {
     );
   }
   const db = event.context.cloudflare.env.nuxtdb;
+
   if (!db) {
     throw new Error(
       "D1 database binding 'nuxtdb' is not available. Check your wrangler.jsonc configuration."

@@ -12,13 +12,16 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "@vueuse/core": "^14.1.0",
     "better-auth": "^1.4.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.1",
+    "fast-png": "^8.0.0",
     "lucide-vue-next": "^0.562.0",
     "nuxt": "^4.2.2",
+    "onnxruntime-node": "^1.23.2",
     "reka-ui": "^2.7.0",
     "shadcn-nuxt": "^2.4.3",
     "tailwind-merge": "^3.4.0",

@@ -4,6 +4,14 @@ import { user } from "../db/schema/auth-schema";
 export default defineEventHandler(async (event) => {
   // Row definition
 
+  /*   const response = await event.context.cloudflare.env.AI.run(
+    "@cf/meta/llama-3.1-8b-instruct",
+    {
+      prompt: "What is the origin of the phrase Hello, World",
+    }
+  );
+  console.log(response); */
+
   const { results } = await event.context.cloudflare.env.nuxtdb
     .prepare("SELECT * FROM user")
     .run();

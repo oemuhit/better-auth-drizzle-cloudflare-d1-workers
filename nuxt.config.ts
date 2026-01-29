@@ -7,6 +7,8 @@ export default defineNuxtConfig({
   css: ["~/assets/css/tailwind.css"],
 
   nitro: {
+    // Use Node.js for development to support @huggingface/transformers
+    // Use Cloudflare for production build
     preset: "cloudflare_module",
 
     cloudflare: {
