@@ -6,6 +6,17 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: ["~/assets/css/tailwind.css"],
 
+  runtimeConfig: {
+    // iyzico configuration (server-side only)
+    iyzicoApiKey: process.env.IYZICO_API_KEY || "",
+    iyzicoSecretKey: process.env.IYZICO_SECRET_KEY || "",
+    iyzicoSandbox: process.env.IYZICO_SANDBOX || "true",
+    // Public URL for callbacks
+    public: {
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || "http://localhost:3000",
+    },
+  },
+
   nitro: {
     // Use Node.js for development to support @huggingface/transformers
     // Use Cloudflare for production build

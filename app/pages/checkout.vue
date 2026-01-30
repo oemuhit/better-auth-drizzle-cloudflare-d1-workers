@@ -54,23 +54,61 @@ watch(
   (addrs) => {
     if (addrs.length > 0 && !selectedShippingAddressId.value) {
       const defaultAddr = addrs.find((a: any) => a.isDefault);
-      selectedShippingAddressId.value = defaultAddr?.id || addrs[0].id;
+      selectedShippingAddressId.value = defaultAddr?.id || addrs[0]?.id || "";
     }
   },
   { immediate: true },
 );
 
-// Calculate totals
+// Calculate totals - prices already include tax (KDV dahil)
 const shippingTotal = ref(0); // Could be calculated based on address
-const taxTotal = computed(() => subtotal.value * 0.18); // 18% KDV
-const total = computed(
-  () => subtotal.value + taxTotal.value + shippingTotal.value,
-);
+
+// Calculate tax included in prices (for invoice purposes only)
+// Formula: taxAmount = price * (taxRate / (1 + taxRate))
+const taxBreakdown = computed(() => {
+  let totalTax = 0;
+  for (const item of items.value) {
+    // Default to 18% if no tax rate specified
+    const taxRate = (item.product as any)?.taxRate?.rate ?? 18;
+    const itemTotal = item.itemTotal || 0;
+    // Extract tax from inclusive price
+    const taxAmount = itemTotal * (taxRate / (100 + taxRate));
+    totalTax += taxAmount;
+  }
+  return totalTax;
+});
+
+// Total is just subtotal + shipping (tax is already included in prices)
+const total = computed(() => subtotal.value + shippingTotal.value);
 
 // Submit state
 const isSubmitting = ref(false);
 const isAddingAddress = ref(false);
 const error = ref<string | null>(null);
+
+// Check for payment errors from callback
+const route = useRoute();
+onMounted(() => {
+  const queryError = route.query.error as string;
+  const queryMessage = route.query.message as string;
+
+  if (queryError) {
+    error.value = queryMessage || getErrorMessage(queryError);
+    // Clean up URL
+    navigateTo("/checkout", { replace: true });
+  }
+});
+
+function getErrorMessage(errorCode: string): string {
+  const messages: Record<string, string> = {
+    missing_token: "Ödeme bilgileri eksik",
+    payment_failed: "Ödeme başarısız oldu",
+    missing_basket: "Sepet bilgisi bulunamadı",
+    cart_not_found: "Sepet bulunamadı",
+    callback_error: "Ödeme işlemi sırasında bir hata oluştu",
+  };
+  return messages[errorCode] || "Bilinmeyen bir hata oluştu";
+}
 
 async function handleAddAddress() {
   if (isAddingAddress.value) return; // Prevent double submission
@@ -114,27 +152,34 @@ async function handleSubmitOrder() {
   error.value = null;
 
   try {
-    const response = await $fetch<{ success: boolean; data: { id: string } }>(
-      "/api/orders",
-      {
-        method: "POST",
-        body: {
-          shippingAddressId: selectedShippingAddressId.value,
-          billingAddressId: useSameAddress.value
-            ? selectedShippingAddressId.value
-            : selectedBillingAddressId.value,
-          taxTotal: taxTotal.value,
-          shippingTotal: shippingTotal.value,
-          notes: notes.value || undefined,
-        },
+    // Initialize iyzico payment
+    const response = await $fetch<{
+      success: boolean;
+      data: {
+        token: string;
+        checkoutFormContent: string;
+        paymentPageUrl: string;
+        total: number;
+      };
+    }>("/api/payment/iyzico/init", {
+      method: "POST",
+      body: {
+        shippingAddressId: selectedShippingAddressId.value,
+        billingAddressId: useSameAddress.value
+          ? selectedShippingAddressId.value
+          : selectedBillingAddressId.value,
+        notes: notes.value || undefined,
       },
-    );
+    });
 
-    if (response.success) {
-      navigateTo(`/orders/${response.data.id}`);
+    if (response.success && response.data) {
+      // Store payment data in sessionStorage for the payment page
+      sessionStorage.setItem("iyzicoPayment", JSON.stringify(response.data));
+      // Navigate to payment page
+      navigateTo("/payment");
     }
   } catch (err: any) {
-    error.value = err.data?.statusMessage || "Sipariş oluşturulamadı";
+    error.value = err.data?.statusMessage || "Ödeme başlatılamadı";
   } finally {
     isSubmitting.value = false;
   }
@@ -318,9 +363,11 @@ function getAddressDisplay(address: any) {
             <!-- Totals -->
             <CartSummary
               :subtotal="subtotal"
-              :tax-total="taxTotal"
+              :tax-total="taxBreakdown"
               :shipping-total="shippingTotal"
+              :total="total"
               show-details
+              tax-inclusive
             />
 
             <!-- Error -->
@@ -336,7 +383,7 @@ function getAddressDisplay(address: any) {
               @click="handleSubmitOrder"
             >
               <Loader2 v-if="isSubmitting" class="h-4 w-4 mr-2 animate-spin" />
-              Siparişi Onayla
+              {{ isSubmitting ? "İşleniyor..." : "Ödemeye Geç" }}
             </Button>
           </CardContent>
         </Card>

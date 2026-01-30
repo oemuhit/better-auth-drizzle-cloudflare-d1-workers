@@ -4,12 +4,25 @@ const props = defineProps<{
   taxTotal?: number;
   shippingTotal?: number;
   discountTotal?: number;
+  total?: number;
   showDetails?: boolean;
+  taxInclusive?: boolean; // If true, tax is already included in prices
 }>();
 
 const { formatPrice } = useCart();
 
-const total = computed(() => {
+const calculatedTotal = computed(() => {
+  // If total is provided, use it
+  if (props.total !== undefined) {
+    return props.total;
+  }
+  // If tax is inclusive, don't add it to total (it's already in subtotal)
+  if (props.taxInclusive) {
+    return (
+      props.subtotal + (props.shippingTotal || 0) - (props.discountTotal || 0)
+    );
+  }
+  // Otherwise add tax to total
   return (
     props.subtotal +
     (props.taxTotal || 0) +
@@ -41,7 +54,9 @@ const total = computed(() => {
       v-if="showDetails && taxTotal !== undefined"
       class="flex justify-between text-sm"
     >
-      <span class="text-muted-foreground">KDV</span>
+      <span class="text-muted-foreground">
+        KDV <span v-if="taxInclusive" class="text-xs">(dahil)</span>
+      </span>
       <span>{{ formatPrice(taxTotal) }}</span>
     </div>
 
@@ -59,7 +74,7 @@ const total = computed(() => {
     <!-- Total -->
     <div class="flex justify-between font-semibold text-lg">
       <span>Toplam</span>
-      <span>{{ formatPrice(showDetails ? total : subtotal) }}</span>
+      <span>{{ formatPrice(showDetails ? calculatedTotal : subtotal) }}</span>
     </div>
 
     <!-- Info Text -->

@@ -21,6 +21,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.1",
     "fast-png": "^8.0.0",
+    "iyzipay": "^2.0.64",
     "lucide-vue-next": "^0.562.0",
     "nuxt": "^4.2.2",
     "onnxruntime-node": "^1.23.2",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@libsql/client": "^0.17.0",
     "@tailwindcss/vite": "^4.1.18",
+    "@types/iyzipay": "^2.0.3",
     "@types/node": "^25.0.3",
     "drizzle-kit": "^0.31.8",
     "nitro-cloudflare-dev": "^0.2.2",
