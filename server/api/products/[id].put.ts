@@ -34,11 +34,31 @@ export default defineEventHandler(async (event) => {
     if (body.slug !== undefined) updateData.slug = body.slug;
     if (body.description !== undefined)
       updateData.description = body.description;
+    if (body.shortDescription !== undefined)
+      updateData.shortDescription = body.shortDescription;
     if (body.thumbnail !== undefined) updateData.thumbnail = body.thumbnail;
     if (body.status !== undefined) updateData.status = body.status;
     if (body.categoryId !== undefined) updateData.categoryId = body.categoryId;
+    if (body.taxRateId !== undefined) updateData.taxRateId = body.taxRateId;
+    // Legacy fields
     if (body.colors !== undefined) updateData.colors = body.colors;
     if (body.sizes !== undefined) updateData.sizes = body.sizes;
+    // Flexible variant attributes
+    if (body.variantAttributes !== undefined)
+      updateData.variantAttributes = body.variantAttributes;
+    // SEO
+    if (body.metaTitle !== undefined) updateData.metaTitle = body.metaTitle;
+    if (body.metaDescription !== undefined)
+      updateData.metaDescription = body.metaDescription;
+    // Pricing
+    if (body.basePrice !== undefined) updateData.basePrice = body.basePrice;
+    if (body.compareAtPrice !== undefined)
+      updateData.compareAtPrice = body.compareAtPrice;
+    // Flags
+    if (body.isFeatured !== undefined) updateData.isFeatured = body.isFeatured;
+    if (body.isNew !== undefined) updateData.isNew = body.isNew;
+    if (body.trackInventory !== undefined)
+      updateData.trackInventory = body.trackInventory;
     if (body.sort !== undefined) updateData.sort = body.sort;
 
     // Update product
@@ -58,14 +78,32 @@ export default defineEventHandler(async (event) => {
           id: variant.id || undefined,
           productId: id,
           sku: variant.sku || null,
+          barcode: variant.barcode || null,
           price: variant.price || 0,
           compareAtPrice: variant.compareAtPrice || null,
+          costPrice: variant.costPrice || null,
+          // Legacy fields
           color: variant.color || null,
           size: variant.size || null,
+          // Flexible attributes
+          attributes: variant.attributes || {},
+          // Weight & dimensions
           weight: variant.weight || null,
           weightUnit: variant.weightUnit || "g",
+          length: variant.length || null,
+          width: variant.width || null,
+          height: variant.height || null,
+          dimensionUnit: variant.dimensionUnit || "cm",
+          // Inventory
           stockQuantity: variant.stockQuantity || 0,
+          lowStockThreshold: variant.lowStockThreshold || 5,
+          allowBackorder: variant.allowBackorder || false,
+          // Media
           image: variant.image || null,
+          images: variant.images || [],
+          // Status
+          isActive: variant.isActive ?? true,
+          sort: variant.sort || 0,
         });
       }
     }
@@ -93,6 +131,7 @@ export default defineEventHandler(async (event) => {
         category: true,
         variants: true,
         images: true,
+        taxRate: true,
       },
     });
 

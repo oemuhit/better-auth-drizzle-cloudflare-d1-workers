@@ -7,13 +7,13 @@ export const serverAuth = (event: any) => {
   // Cloudflare D1 binding'ini al
   if (!event.context?.cloudflare?.env) {
     throw new Error(
-      "Cloudflare context is not available. Make sure you're running in a Cloudflare Workers environment."
+      "Cloudflare context is not available. Make sure you're running in a Cloudflare Workers environment.",
     );
   }
   const DB = event.context.cloudflare.env.nuxtdb;
   if (!DB) {
     throw new Error(
-      "D1 database binding 'nuxtdb' is not available. Check your wrangler.jsonc configuration."
+      "D1 database binding 'nuxtdb' is not available. Check your wrangler.jsonc configuration.",
     );
   }
   const db = drizzle(DB, { schema });

@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ChevronRight } from "lucide-vue-next";
+import {
+  ChevronRight,
+  Star,
+  Truck,
+  ShieldCheck,
+  RotateCcw,
+  Heart,
+} from "lucide-vue-next";
 
 definePageMeta({
   layout: "default",
@@ -24,9 +31,23 @@ const product = computed(() => productData.value?.data);
 
 useHead({
   title: computed(() =>
-    product.value?.title ? `${product.value.title} | Mağaza` : "Ürün",
+    product.value?.title ? `${product.value.title} | Shop` : "Ürün",
   ),
 });
+
+// Fetch related products (same category)
+const { data: relatedProductsData } = await useFetch("/api/products", {
+  query: computed(() => ({
+    limit: 4,
+    categoryId: product.value?.categoryId,
+  })),
+});
+
+const relatedProducts = computed(() =>
+  (relatedProductsData.value?.data || []).filter(
+    (p: any) => p.id !== product.value?.id,
+  ),
+);
 
 // Selected variant
 const selectedVariantId = ref<string>();
@@ -58,142 +79,262 @@ function formatPrice(price: number) {
     currency: "TRY",
   }).format(price);
 }
+
+// Wishlist
+const { isInWishlist, toggleWishlist } = useWishlist();
+const inWishlist = computed(() =>
+  product.value ? isInWishlist(product.value.id) : false,
+);
+
+function handleToggleWishlist() {
+  if (product.value) {
+    toggleWishlist(product.value);
+  }
+}
+
+// Mock rating
+const rating = 4;
+const reviewCount = 12;
 </script>
 
 <template>
-  <div class="container mx-auto px-4 py-8">
-    <!-- Breadcrumb -->
-    <nav class="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-      <NuxtLink to="/" class="hover:text-foreground">Ana Sayfa</NuxtLink>
-      <ChevronRight class="h-4 w-4" />
-      <NuxtLink to="/shop" class="hover:text-foreground">Mağaza</NuxtLink>
-      <template v-if="product?.category">
+  <div>
+    <div class="container mx-auto px-4 py-8">
+      <!-- Breadcrumb -->
+      <nav class="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+        <NuxtLink to="/" class="hover:text-foreground">Ana Sayfa</NuxtLink>
         <ChevronRight class="h-4 w-4" />
-        <NuxtLink
-          :to="`/shop/category/${product.category.slug}`"
-          class="hover:text-foreground"
-        >
-          {{ product.category.title }}
-        </NuxtLink>
-      </template>
-      <ChevronRight class="h-4 w-4" />
-      <span class="text-foreground">{{ product?.title }}</span>
-    </nav>
+        <NuxtLink to="/shop" class="hover:text-foreground">Mağaza</NuxtLink>
+        <template v-if="product?.category">
+          <ChevronRight class="h-4 w-4" />
+          <NuxtLink
+            :to="`/shop/category/${product.category.slug}`"
+            class="hover:text-foreground"
+          >
+            {{ product.category.title }}
+          </NuxtLink>
+        </template>
+        <ChevronRight class="h-4 w-4" />
+        <span class="text-foreground line-clamp-1">{{ product?.title }}</span>
+      </nav>
 
-    <div v-if="product" class="grid lg:grid-cols-2 gap-8 lg:gap-12">
-      <!-- Images -->
-      <div class="space-y-4">
-        <!-- Main Image -->
-        <div class="aspect-square rounded-lg overflow-hidden bg-muted">
-          <img
-            :src="images[currentImageIndex].url"
-            :alt="images[currentImageIndex].alt || product.title"
-            class="w-full h-full object-cover"
-          />
-        </div>
-
-        <!-- Thumbnails -->
-        <div v-if="images.length > 1" class="flex gap-2 overflow-x-auto pb-2">
-          <button
-            v-for="(image, index) in images"
-            :key="index"
-            class="shrink-0 w-20 h-20 rounded-md overflow-hidden border-2 transition-colors"
-            :class="[
-              currentImageIndex === index
-                ? 'border-primary'
-                : 'border-transparent hover:border-muted-foreground',
-            ]"
-            @click="currentImageIndex = index"
+      <div v-if="product" class="grid lg:grid-cols-2 gap-8 lg:gap-12">
+        <!-- Images -->
+        <div class="space-y-4">
+          <!-- Main Image -->
+          <div
+            class="aspect-square rounded-2xl overflow-hidden bg-muted relative group"
           >
             <img
-              :src="image.url"
-              :alt="image.alt || ''"
-              class="w-full h-full object-cover"
+              :src="images[currentImageIndex].url"
+              :alt="images[currentImageIndex].alt || product.title"
+              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
-          </button>
+            <!-- Wishlist Button -->
+            <Button
+              variant="secondary"
+              size="icon"
+              class="absolute top-4 right-4 rounded-full shadow-lg"
+              :class="{ 'text-red-500': inWishlist }"
+              @click="handleToggleWishlist"
+            >
+              <Heart class="h-5 w-5" :class="{ 'fill-current': inWishlist }" />
+            </Button>
+          </div>
+
+          <!-- Thumbnails -->
+          <div v-if="images.length > 1" class="flex gap-3 overflow-x-auto pb-2">
+            <button
+              v-for="(image, index) in images"
+              :key="index"
+              class="shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all"
+              :class="[
+                currentImageIndex === index
+                  ? 'border-primary ring-2 ring-primary/20'
+                  : 'border-transparent hover:border-muted-foreground',
+              ]"
+              @click="currentImageIndex = index"
+            >
+              <img
+                :src="image.url"
+                :alt="image.alt || ''"
+                class="w-full h-full object-cover"
+              />
+            </button>
+          </div>
+        </div>
+
+        <!-- Product Info -->
+        <div class="space-y-6">
+          <!-- Category & Title -->
+          <div>
+            <NuxtLink
+              v-if="product.category"
+              :to="`/shop/category/${product.category.slug}`"
+              class="text-sm text-primary hover:underline"
+            >
+              {{ product.category.title }}
+            </NuxtLink>
+            <h1 class="text-3xl lg:text-4xl font-bold mt-2">
+              {{ product.title }}
+            </h1>
+          </div>
+
+          <!-- Rating -->
+          <div class="flex items-center gap-2">
+            <div class="flex">
+              <Star
+                v-for="i in 5"
+                :key="i"
+                class="h-5 w-5"
+                :class="
+                  i <= rating
+                    ? 'text-yellow-400 fill-yellow-400'
+                    : 'text-gray-200'
+                "
+              />
+            </div>
+            <span class="text-sm text-muted-foreground">
+              ({{ reviewCount }} değerlendirme)
+            </span>
+          </div>
+
+          <!-- Price -->
+          <div class="flex items-baseline gap-3">
+            <span
+              v-if="selectedVariant"
+              class="text-3xl font-bold text-primary"
+            >
+              {{ formatPrice(selectedVariant.price) }}
+            </span>
+            <span
+              v-else-if="product.priceRange"
+              class="text-3xl font-bold text-primary"
+            >
+              {{
+                product.priceRange.min === product.priceRange.max
+                  ? formatPrice(product.priceRange.min)
+                  : `${formatPrice(product.priceRange.min)} - ${formatPrice(product.priceRange.max)}`
+              }}
+            </span>
+            <span
+              v-if="
+                selectedVariant?.compareAtPrice &&
+                selectedVariant.compareAtPrice > selectedVariant.price
+              "
+              class="text-xl text-muted-foreground line-through"
+            >
+              {{ formatPrice(selectedVariant.compareAtPrice) }}
+            </span>
+            <Badge v-if="selectedVariant?.compareAtPrice" variant="destructive">
+              İndirim
+            </Badge>
+          </div>
+
+          <!-- Description Short -->
+          <p
+            v-if="product.description"
+            class="text-muted-foreground line-clamp-3"
+          >
+            {{ product.description }}
+          </p>
+
+          <!-- Variants -->
+          <div v-if="product.variants && product.variants.length > 0">
+            <ProductVariantSelect
+              v-model="selectedVariantId"
+              :variants="product.variants"
+              :variant-attributes="product.variantAttributes"
+              :colors="product.colors"
+              :sizes="product.sizes"
+            />
+          </div>
+
+          <!-- Stock Status -->
+          <div class="flex items-center gap-2">
+            <div
+              class="h-3 w-3 rounded-full"
+              :class="product.inStock ? 'bg-green-500' : 'bg-red-500'"
+            />
+            <span :class="product.inStock ? 'text-green-600' : 'text-red-600'">
+              {{ product.inStock ? "Stokta" : "Stokta Yok" }}
+            </span>
+            <span v-if="product.inStock" class="text-sm text-muted-foreground">
+              ({{ product.totalStock }} adet)
+            </span>
+          </div>
+
+          <!-- Add to Cart -->
+          <div class="pt-4">
+            {{ selectedVariantId }}
+            <AddToCartButton
+              :product-id="product.id"
+              :variant-id="selectedVariantId"
+              :disabled="
+                !product.inStock ||
+                (product.variants?.length > 0 && !selectedVariantId)
+              "
+              size="lg"
+              full-width
+            />
+          </div>
+
+          <!-- Features -->
+          <div class="grid grid-cols-3 gap-4 pt-4">
+            <div
+              class="flex flex-col items-center text-center p-3 bg-muted/30 rounded-xl"
+            >
+              <Truck class="h-5 w-5 text-primary mb-2" />
+              <span class="text-xs font-medium">Ücretsiz Kargo</span>
+            </div>
+            <div
+              class="flex flex-col items-center text-center p-3 bg-muted/30 rounded-xl"
+            >
+              <ShieldCheck class="h-5 w-5 text-primary mb-2" />
+              <span class="text-xs font-medium">Güvenli Ödeme</span>
+            </div>
+            <div
+              class="flex flex-col items-center text-center p-3 bg-muted/30 rounded-xl"
+            >
+              <RotateCcw class="h-5 w-5 text-primary mb-2" />
+              <span class="text-xs font-medium">30 Gün İade</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Product Info -->
-      <div class="space-y-6">
-        <div>
-          <Badge v-if="product.category" variant="secondary" class="mb-2">
-            {{ product.category.title }}
-          </Badge>
-          <h1 class="text-3xl font-bold">{{ product.title }}</h1>
-        </div>
+      <!-- Product Details Tabs -->
+      <div v-if="product" class="mt-16">
+        <Tabs default-value="description" class="w-full">
+          <TabsList class="grid w-full grid-cols-2 lg:w-[400px]">
+            <TabsTrigger value="description">Açıklama</TabsTrigger>
+            <TabsTrigger value="reviews">Değerlendirmeler</TabsTrigger>
+          </TabsList>
+          <TabsContent value="description" class="mt-6">
+            <div class="prose prose-sm max-w-none">
+              <p v-if="product.description">{{ product.description }}</p>
+              <p v-else class="text-muted-foreground">
+                Bu ürün için detaylı açıklama bulunmuyor.
+              </p>
+            </div>
+          </TabsContent>
+          <TabsContent value="reviews" class="mt-6">
+            <div class="text-center py-8 text-muted-foreground">
+              Henüz değerlendirme yok.
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
 
-        <!-- Price -->
-        <div v-if="selectedVariant">
-          <span class="text-3xl font-bold">{{
-            formatPrice(selectedVariant.price)
-          }}</span>
-          <span
-            v-if="
-              selectedVariant.compareAtPrice &&
-              selectedVariant.compareAtPrice > selectedVariant.price
-            "
-            class="ml-2 text-xl text-muted-foreground line-through"
-          >
-            {{ formatPrice(selectedVariant.compareAtPrice) }}
-          </span>
-        </div>
-        <div v-else-if="product.priceRange">
-          <span class="text-3xl font-bold">
-            {{
-              product.priceRange.min === product.priceRange.max
-                ? formatPrice(product.priceRange.min)
-                : `${formatPrice(product.priceRange.min)} - ${formatPrice(product.priceRange.max)}`
-            }}
-          </span>
-        </div>
-
-        <!-- Status -->
-        <div class="flex items-center gap-2">
-          <Badge :variant="product.inStock ? 'default' : 'destructive'">
-            {{ product.inStock ? "Stokta" : "Stokta Yok" }}
-          </Badge>
-          <span class="text-sm text-muted-foreground">
-            {{ product.totalStock }} adet mevcut
-          </span>
-        </div>
-
-        <!-- Variants -->
-        <div v-if="product.variants && product.variants.length > 0">
-          <ProductVariantSelect
-            v-model="selectedVariantId"
-            :variants="product.variants"
-            :colors="product.colors"
-            :sizes="product.sizes"
+      <!-- Related Products -->
+      <div v-if="relatedProducts.length > 0" class="mt-16">
+        <h2 class="text-2xl font-bold mb-6">Benzer Ürünler</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <ProductCard
+            v-for="p in relatedProducts.slice(0, 4)"
+            :key="p.id"
+            :product="p"
           />
-        </div>
-
-        <!-- Add to Cart -->
-        <div class="pt-4">
-          <AddToCartButton
-            :product-id="product.id"
-            :variant-id="selectedVariantId"
-            :disabled="
-              !product.inStock ||
-              (product.variants?.length > 0 && !selectedVariantId)
-            "
-            size="lg"
-            full-width
-          />
-        </div>
-
-        <!-- Description -->
-        <Separator />
-        <div>
-          <h2 class="font-semibold mb-2">Ürün Açıklaması</h2>
-          <div
-            v-if="product.description"
-            class="prose prose-sm max-w-none text-muted-foreground"
-            v-html="product.description"
-          />
-          <p v-else class="text-muted-foreground">
-            Bu ürün için açıklama bulunmuyor.
-          </p>
         </div>
       </div>
     </div>

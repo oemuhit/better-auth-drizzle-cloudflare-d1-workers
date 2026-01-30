@@ -42,6 +42,7 @@ async function handleSubmit(formData: any) {
       body: {
         ...formData,
         categoryId: formData.categoryId === "none" ? null : formData.categoryId,
+        taxRateId: formData.taxRateId === "none" ? null : formData.taxRateId,
       },
     });
     navigateTo("/admin/products");

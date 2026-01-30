@@ -69,9 +69,15 @@ const total = computed(
 
 // Submit state
 const isSubmitting = ref(false);
+const isAddingAddress = ref(false);
 const error = ref<string | null>(null);
 
 async function handleAddAddress() {
+  if (isAddingAddress.value) return; // Prevent double submission
+
+  isAddingAddress.value = true;
+  error.value = null;
+
   try {
     await $fetch("/api/addresses", {
       method: "POST",
@@ -93,6 +99,8 @@ async function handleAddAddress() {
     });
   } catch (err: any) {
     error.value = err.data?.statusMessage || "Adres eklenemedi";
+  } finally {
+    isAddingAddress.value = false;
   }
 }
 
@@ -406,11 +414,18 @@ function getAddressDisplay(address: any) {
             <Button
               type="button"
               variant="outline"
+              :disabled="isAddingAddress"
               @click="showAddressDialog = false"
             >
               İptal
             </Button>
-            <Button type="submit">Kaydet</Button>
+            <Button type="submit" :disabled="isAddingAddress">
+              <Loader2
+                v-if="isAddingAddress"
+                class="h-4 w-4 mr-2 animate-spin"
+              />
+              Kaydet
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

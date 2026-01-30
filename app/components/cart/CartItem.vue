@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Minus, Plus, Trash2 } from "lucide-vue-next";
+import { Minus, Plus, X } from "lucide-vue-next";
 import type { CartItem as CartItemType } from "~/composables/useCart";
 
 const props = defineProps<{
@@ -44,7 +44,7 @@ const imageUrl = computed(() => {
   if (props.item.product.images && props.item.product.images.length > 0) {
     return props.item.product.images[0].url;
   }
-  return "/placeholder-product.jpg";
+  return props.item.product.thumbnail || "/placeholder-product.jpg";
 });
 
 // Get variant info
@@ -60,52 +60,69 @@ const variantInfo = computed(() => {
 </script>
 
 <template>
-  <div class="flex gap-4" :class="[compact ? 'py-2' : 'py-4 border-b']">
+  <div class="flex gap-4 p-4" :class="[compact ? '' : 'first:pt-4 last:pb-4']">
     <!-- Image -->
     <NuxtLink :to="`/shop/${item.product.slug}`" class="shrink-0">
-      <img
-        :src="imageUrl"
-        :alt="item.product.title"
-        class="rounded-md object-cover"
-        :class="[compact ? 'w-16 h-16' : 'w-20 h-20']"
-      />
+      <div
+        class="rounded-lg overflow-hidden bg-muted"
+        :class="[compact ? 'w-16 h-16' : 'w-24 h-24']"
+      >
+        <img
+          :src="imageUrl"
+          :alt="item.product.title"
+          class="w-full h-full object-cover"
+        />
+      </div>
     </NuxtLink>
 
     <!-- Info -->
     <div class="flex-1 min-w-0">
-      <NuxtLink
-        :to="`/shop/${item.product.slug}`"
-        class="font-medium text-foreground hover:text-primary line-clamp-2"
-        :class="[compact ? 'text-sm' : '']"
-      >
-        {{ item.product.title }}
-      </NuxtLink>
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <NuxtLink
+            :to="`/shop/${item.product.slug}`"
+            class="font-medium text-foreground hover:text-primary line-clamp-2"
+            :class="[compact ? 'text-sm' : '']"
+          >
+            {{ item.product.title }}
+          </NuxtLink>
 
-      <p v-if="variantInfo" class="text-sm text-muted-foreground mt-0.5">
-        {{ variantInfo }}
-      </p>
+          <p v-if="variantInfo" class="text-sm text-muted-foreground mt-0.5">
+            {{ variantInfo }}
+          </p>
+        </div>
 
-      <p class="font-semibold mt-1" :class="[compact ? 'text-sm' : '']">
-        {{ formatPrice(item.price) }}
-      </p>
+        <!-- Remove Button -->
+        <Button
+          variant="ghost"
+          size="icon"
+          class="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+          :disabled="isLoading"
+          @click="handleRemove"
+        >
+          <X class="h-4 w-4" />
+        </Button>
+      </div>
 
-      <!-- Quantity Controls -->
-      <div class="flex items-center gap-2 mt-2">
-        <div class="flex items-center border rounded-md">
+      <div class="flex items-end justify-between mt-3">
+        <!-- Quantity Controls -->
+        <div class="flex items-center border rounded-full">
           <Button
             variant="ghost"
             size="icon"
-            class="h-8 w-8"
+            class="h-8 w-8 rounded-full"
             :disabled="isLoading || localQuantity <= 1"
             @click="handleQuantityChange(localQuantity - 1)"
           >
             <Minus class="h-3 w-3" />
           </Button>
-          <span class="w-8 text-center text-sm">{{ localQuantity }}</span>
+          <span class="w-8 text-center text-sm font-medium">{{
+            localQuantity
+          }}</span>
           <Button
             variant="ghost"
             size="icon"
-            class="h-8 w-8"
+            class="h-8 w-8 rounded-full"
             :disabled="isLoading"
             @click="handleQuantityChange(localQuantity + 1)"
           >
@@ -113,19 +130,15 @@ const variantInfo = computed(() => {
           </Button>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          class="h-8 w-8 text-muted-foreground hover:text-destructive"
-          :disabled="isLoading"
-          @click="handleRemove"
-        >
-          <Trash2 class="h-4 w-4" />
-        </Button>
-
-        <span class="ml-auto font-semibold" :class="[compact ? 'text-sm' : '']">
-          {{ formatPrice(item.itemTotal) }}
-        </span>
+        <!-- Price -->
+        <div class="text-right">
+          <p class="text-sm text-muted-foreground">
+            {{ formatPrice(item.price) }} x {{ localQuantity }}
+          </p>
+          <p class="font-semibold" :class="[compact ? 'text-sm' : 'text-lg']">
+            {{ formatPrice(item.itemTotal) }}
+          </p>
+        </div>
       </div>
     </div>
   </div>

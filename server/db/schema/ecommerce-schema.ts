@@ -9,6 +9,76 @@ import {
 import { user } from "./auth-schema";
 
 // ============================================================================
+// Variant Attribute Types - Defines what attributes exist in the system
+// Example: "color", "size", "material", "storage", "memory"
+// ============================================================================
+export interface VariantAttributeOption {
+  value: string;
+  label: string;
+  colorCode?: string; // For color attributes, e.g., "#FF0000"
+  image?: string; // Optional image URL for this option
+}
+
+export interface VariantAttributeDefinition {
+  name: string; // e.g., "color", "size", "material"
+  label: string; // e.g., "Renk", "Beden", "Malzeme"
+  type: "color" | "size" | "select" | "text";
+  options: VariantAttributeOption[];
+}
+
+// ============================================================================
+// ATTRIBUTE TEMPLATES - Reusable attribute definitions
+// ============================================================================
+export const attributeTemplate = sqliteTable("attribute_template", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull().unique(), // e.g., "color", "size", "storage"
+  label: text("label").notNull(), // e.g., "Renk", "Beden", "Depolama"
+  type: text("type", { enum: ["color", "size", "select", "text"] })
+    .notNull()
+    .default("select"),
+  // Options stored as JSON array
+  options: text("options", { mode: "json" })
+    .$type<VariantAttributeOption[]>()
+    .default([]),
+  description: text("description"),
+  icon: text("icon"), // Lucide icon name
+  sort: integer("sort").default(0),
+  isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+// ============================================================================
+// TAX RATES
+// ============================================================================
+export const taxRate = sqliteTable("tax_rate", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  title: text("title").notNull(),
+  code: text("code").notNull().unique(),
+  rate: real("rate").notNull().default(0), // Percentage, e.g., 18 for 18%
+  isDefault: integer("is_default", { mode: "boolean" })
+    .default(false)
+    .notNull(),
+  isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+// ============================================================================
 // CATEGORIES
 // ============================================================================
 export const category = sqliteTable(
@@ -19,6 +89,8 @@ export const category = sqliteTable(
       .$defaultFn(() => crypto.randomUUID()),
     title: text("title").notNull(),
     slug: text("slug").notNull().unique(),
+    description: text("description"),
+    image: text("image"), // Category image URL
     parentCategoryId: text("parent_category_id").references(
       (): any => category.id,
       { onDelete: "set null" },
@@ -51,17 +123,51 @@ export const product = sqliteTable(
     title: text("title").notNull(),
     slug: text("slug").notNull().unique(),
     description: text("description"),
+    shortDescription: text("short_description"),
     thumbnail: text("thumbnail"),
     status: text("status", {
-      enum: ["active", "inactive", "out_of_stock", "hidden"],
+      enum: [
+        "active",
+        "inactive",
+        "out_of_stock",
+        "backordered",
+        "hidden",
+        "draft",
+      ],
     })
-      .default("active")
+      .default("draft")
       .notNull(),
     categoryId: text("category_id").references(() => category.id, {
       onDelete: "set null",
     }),
+    // Tax rate reference
+    taxRateId: text("tax_rate_id").references(() => taxRate.id, {
+      onDelete: "set null",
+    }),
+    // Legacy fields (kept for backwards compatibility)
     colors: text("colors", { mode: "json" }).$type<string[]>().default([]),
     sizes: text("sizes", { mode: "json" }).$type<string[]>().default([]),
+    // Flexible attribute definitions for this product
+    // Stores available options for each attribute type
+    // Example: { "color": { name: "color", label: "Renk", type: "color", options: [...] }, "size": {...} }
+    variantAttributes: text("variant_attributes", { mode: "json" })
+      .$type<Record<string, VariantAttributeDefinition>>()
+      .default({}),
+    // SEO fields
+    metaTitle: text("meta_title"),
+    metaDescription: text("meta_description"),
+    // Pricing
+    basePrice: real("base_price").default(0),
+    compareAtPrice: real("compare_at_price"),
+    // Flags
+    isFeatured: integer("is_featured", { mode: "boolean" })
+      .default(false)
+      .notNull(),
+    isNew: integer("is_new", { mode: "boolean" }).default(false).notNull(),
+    // Inventory
+    trackInventory: integer("track_inventory", { mode: "boolean" })
+      .default(true)
+      .notNull(),
     sort: integer("sort").default(0),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -75,11 +181,13 @@ export const product = sqliteTable(
     index("product_slug_idx").on(table.slug),
     index("product_category_idx").on(table.categoryId),
     index("product_status_idx").on(table.status),
+    index("product_featured_idx").on(table.isFeatured),
   ],
 );
 
 // ============================================================================
 // PRODUCT VARIANTS
+// Flexible variant system - supports any combination of attributes
 // ============================================================================
 export const productVariant = sqliteTable(
   "product_variant",
@@ -91,16 +199,41 @@ export const productVariant = sqliteTable(
       .notNull()
       .references(() => product.id, { onDelete: "cascade" }),
     sku: text("sku").unique(),
+    barcode: text("barcode"),
     price: real("price").notNull().default(0),
     compareAtPrice: real("compare_at_price"),
+    costPrice: real("cost_price"), // Cost for profit calculation
+    // Legacy fields (kept for backwards compatibility)
     color: text("color"),
     size: text("size"),
+    // Flexible attributes - stores the actual attribute values for this variant
+    // Example: { "color": "Red", "size": "XL", "material": "Cotton", "storage": "256GB" }
+    attributes: text("attributes", { mode: "json" })
+      .$type<Record<string, string>>()
+      .default({}),
+    // Weight & Dimensions
     weight: real("weight"),
     weightUnit: text("weight_unit", { enum: ["g", "kg", "lb", "oz"] }).default(
       "g",
     ),
+    length: real("length"),
+    width: real("width"),
+    height: real("height"),
+    dimensionUnit: text("dimension_unit", {
+      enum: ["cm", "m", "in", "ft"],
+    }).default("cm"),
+    // Inventory
     stockQuantity: integer("stock_quantity").default(0).notNull(),
+    lowStockThreshold: integer("low_stock_threshold").default(5),
+    allowBackorder: integer("allow_backorder", { mode: "boolean" })
+      .default(false)
+      .notNull(),
+    // Media
     image: text("image"),
+    images: text("images", { mode: "json" }).$type<string[]>().default([]),
+    // Status
+    isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+    sort: integer("sort").default(0),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -112,6 +245,7 @@ export const productVariant = sqliteTable(
   (table) => [
     index("variant_product_idx").on(table.productId),
     index("variant_sku_idx").on(table.sku),
+    index("variant_barcode_idx").on(table.barcode),
   ],
 );
 
@@ -326,6 +460,11 @@ export const cartItem = sqliteTable(
 // RELATIONS
 // ============================================================================
 
+// Tax Rate relations
+export const taxRateRelations = relations(taxRate, ({ many }) => ({
+  products: many(product),
+}));
+
 // Category relations
 export const categoryRelations = relations(category, ({ one, many }) => ({
   parentCategory: one(category, {
@@ -342,6 +481,10 @@ export const productRelations = relations(product, ({ one, many }) => ({
   category: one(category, {
     fields: [product.categoryId],
     references: [category.id],
+  }),
+  taxRate: one(taxRate, {
+    fields: [product.taxRateId],
+    references: [taxRate.id],
   }),
   variants: many(productVariant),
   images: many(productImage),
@@ -444,8 +587,49 @@ export const cartItemRelations = relations(cartItem, ({ one }) => ({
 }));
 
 // ============================================================================
+// WISHLIST
+// ============================================================================
+export const wishlist = sqliteTable(
+  "wishlist",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index("wishlist_user_idx").on(table.userId),
+    index("wishlist_product_idx").on(table.productId),
+  ],
+);
+
+// Wishlist relations
+export const wishlistRelations = relations(wishlist, ({ one }) => ({
+  user: one(user, {
+    fields: [wishlist.userId],
+    references: [user.id],
+  }),
+  product: one(product, {
+    fields: [wishlist.productId],
+    references: [product.id],
+  }),
+}));
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
+export type TaxRate = typeof taxRate.$inferSelect;
+export type NewTaxRate = typeof taxRate.$inferInsert;
+export type Wishlist = typeof wishlist.$inferSelect;
+export type NewWishlist = typeof wishlist.$inferInsert;
 export type Category = typeof category.$inferSelect;
 export type NewCategory = typeof category.$inferInsert;
 export type Product = typeof product.$inferSelect;
@@ -464,3 +648,5 @@ export type Cart = typeof cart.$inferSelect;
 export type NewCart = typeof cart.$inferInsert;
 export type CartItem = typeof cartItem.$inferSelect;
 export type NewCartItem = typeof cartItem.$inferInsert;
+export type AttributeTemplate = typeof attributeTemplate.$inferSelect;
+export type NewAttributeTemplate = typeof attributeTemplate.$inferInsert;

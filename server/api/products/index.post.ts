@@ -22,18 +22,33 @@ export default defineEventHandler(async (event) => {
       .replace(/(^-|-$)/g, "");
 
   try {
-    // Create product
+    // Create product with new flexible attributes
     const [newProduct] = await db
       .insert(product)
       .values({
         title: body.title,
         slug,
         description: body.description || null,
+        shortDescription: body.shortDescription || null,
         thumbnail: body.thumbnail || null,
-        status: body.status || "active",
+        status: body.status || "draft",
         categoryId: body.categoryId || null,
+        taxRateId: body.taxRateId || null,
+        // Legacy fields
         colors: body.colors || [],
         sizes: body.sizes || [],
+        // Flexible variant attributes
+        variantAttributes: body.variantAttributes || {},
+        // SEO
+        metaTitle: body.metaTitle || null,
+        metaDescription: body.metaDescription || null,
+        // Pricing
+        basePrice: body.basePrice || 0,
+        compareAtPrice: body.compareAtPrice || null,
+        // Flags
+        isFeatured: body.isFeatured || false,
+        isNew: body.isNew || false,
+        trackInventory: body.trackInventory ?? true,
         sort: body.sort ?? 0,
       })
       .returning();
@@ -44,14 +59,32 @@ export default defineEventHandler(async (event) => {
         await db.insert(productVariant).values({
           productId: newProduct.id,
           sku: variant.sku || null,
+          barcode: variant.barcode || null,
           price: variant.price || 0,
           compareAtPrice: variant.compareAtPrice || null,
+          costPrice: variant.costPrice || null,
+          // Legacy fields
           color: variant.color || null,
           size: variant.size || null,
+          // Flexible attributes
+          attributes: variant.attributes || {},
+          // Weight & dimensions
           weight: variant.weight || null,
           weightUnit: variant.weightUnit || "g",
+          length: variant.length || null,
+          width: variant.width || null,
+          height: variant.height || null,
+          dimensionUnit: variant.dimensionUnit || "cm",
+          // Inventory
           stockQuantity: variant.stockQuantity || 0,
+          lowStockThreshold: variant.lowStockThreshold || 5,
+          allowBackorder: variant.allowBackorder || false,
+          // Media
           image: variant.image || null,
+          images: variant.images || [],
+          // Status
+          isActive: variant.isActive ?? true,
+          sort: variant.sort || 0,
         });
       }
     }
@@ -76,6 +109,7 @@ export default defineEventHandler(async (event) => {
         category: true,
         variants: true,
         images: true,
+        taxRate: true,
       },
     });
 

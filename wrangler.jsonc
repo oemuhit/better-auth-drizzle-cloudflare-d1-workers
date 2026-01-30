@@ -7,25 +7,30 @@
   "name": "nuxt",
   "main": "./.output/server/index.mjs",
   "compatibility_date": "2026-01-03",
+  "compatibility_flags": [
+    "global_fetch_strictly_public",
+    "nodejs_compat",
+    "no_nodejs_compat_v2",
+  ],
   "assets": {
     "binding": "ASSETS",
-    "directory": "./.output/public/"
+    "directory": "./.output/public/",
   },
   "observability": {
-    "enabled": true
+    "enabled": true,
   },
   "ai": {
     "binding": "AI",
-    "remote": true
+    "remote": true,
   },
   "d1_databases": [
     {
       "binding": "nuxtdb",
       "database_name": "nuxtdb",
       "database_id": "800800f8-c9e8-4d85-82fd-4935e07bb4ba",
-      "remote": true
-    }
-  ]
+      "remote": true,
+    },
+  ],
 
   /**
    * Smart Placement

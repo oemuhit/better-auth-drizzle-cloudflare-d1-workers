@@ -1,21 +1,22 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { category } from "../../db/schema";
 
 export default defineEventHandler(async (event) => {
   const db = useDb(event);
-  const id = getRouterParam(event, "id");
+  const idOrSlug = getRouterParam(event, "id");
 
-  if (!id) {
+  if (!idOrSlug) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Category ID is required",
+      statusMessage: "Category ID or slug is required",
     });
   }
 
   try {
+    // Search by both id and slug
     const foundCategory = await db.query.category.findFirst({
-      where: eq(category.id, id),
+      where: or(eq(category.id, idOrSlug), eq(category.slug, idOrSlug)),
       with: {
         parentCategory: true,
         subCategories: true,
