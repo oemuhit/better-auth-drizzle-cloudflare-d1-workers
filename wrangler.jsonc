@@ -52,7 +52,7 @@
    */
   "vars": {
     "IYZICO_SANDBOX": "true",
-    "NUXT_PUBLIC_SITE_URL": "https://lucky-sky-97b8.nuxt.dev",
+    "NUXT_PUBLIC_SITE_URL": "https://nuxt.oertugrulmuhit.workers.dev",
   },
   // Secrets (set via wrangler secret put):
   // - IYZICO_API_KEY
