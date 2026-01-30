@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { useDb } from "../../../utils/db";
-import { useIyzico, retrieveCheckoutForm, IYZICO } from "../../../utils/iyzico";
+import { useIyzico, IYZICO } from "../../../utils/iyzico";
 import {
   cart,
   cartItem,
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   try {
     // Retrieve payment result from iyzico
     const iyzipay = useIyzico(event);
-    const result = await retrieveCheckoutForm(iyzipay, {
+    const result = await iyzipay.retrieveCheckoutForm({
       locale: IYZICO.LOCALE.TR,
       token,
     });

@@ -6,7 +6,6 @@ import {
   IYZICO,
   generateConversationId,
   formatIyzicoPrice,
-  initializeCheckoutForm,
   type IyzicoBuyer,
   type IyzicoAddress,
   type IyzicoBasketItem,
@@ -201,9 +200,8 @@ export default defineEventHandler(async (event) => {
     };
 
     console.log("iyzico request:", JSON.stringify(request, null, 2));
-    console.log("iyzico iyzipay:", JSON.stringify(iyzipay, null, 2));
 
-    const result = await initializeCheckoutForm(iyzipay, request);
+    const result = await iyzipay.initializeCheckoutForm(request);
 
     if (result.status !== "success") {
       console.error("iyzico init error:", result);
