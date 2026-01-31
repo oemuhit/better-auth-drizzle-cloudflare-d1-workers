@@ -5,7 +5,7 @@ import type {
 } from "~~/server/db/schema";
 
 interface ExtendedProductVariant extends ProductVariant {
-  attributes?: Record<string, string>;
+  attributes: Record<string, string> | null;
 }
 
 const props = defineProps<{
@@ -25,7 +25,7 @@ const emit = defineEmits<{
 // Selected attribute values
 const selectedAttributes = ref<Record<string, string | null>>({});
 
-// Get all attribute definitions (from variantAttributes or infer from variants)
+// Get all attribute definitions
 const attributeDefinitions = computed(() => {
   if (
     props.variantAttributes &&
@@ -34,42 +34,11 @@ const attributeDefinitions = computed(() => {
     return props.variantAttributes;
   }
 
-  // Fallback: infer from variants (legacy color/size support)
+  // Fallback: infer from variants attributes
   const inferred: Record<string, VariantAttributeDefinition> = {};
 
-  // Check for colors
-  const colors = new Set(props.variants.map((v) => v.color).filter(Boolean));
-  if (colors.size > 0 || (props.colors && props.colors.length > 0)) {
-    const colorList =
-      props.colors && props.colors.length > 0
-        ? props.colors
-        : (Array.from(colors) as string[]);
-    inferred.color = {
-      name: "color",
-      label: "Renk",
-      type: "color",
-      options: colorList.map((c) => ({ value: c, label: c })),
-    };
-  }
-
-  // Check for sizes
-  const sizes = new Set(props.variants.map((v) => v.size).filter(Boolean));
-  if (sizes.size > 0 || (props.sizes && props.sizes.length > 0)) {
-    const sizeList =
-      props.sizes && props.sizes.length > 0
-        ? props.sizes
-        : (Array.from(sizes) as string[]);
-    inferred.size = {
-      name: "size",
-      label: "Beden",
-      type: "size",
-      options: sizeList.map((s) => ({ value: s, label: s })),
-    };
-  }
-
-  // Check for attributes from variants
   props.variants.forEach((v) => {
-    if (v.attributes) {
+    if (v.attributes) { // Null check for v.attributes
       Object.entries(v.attributes).forEach(([key, value]) => {
         if (value && !inferred[key]) {
           const values = new Set(
@@ -81,9 +50,9 @@ const attributeDefinitions = computed(() => {
             name: key,
             label: key.charAt(0).toUpperCase() + key.slice(1),
             type: "select",
-            options: Array.from(values).map((v) => ({
-              value: v as string,
-              label: v as string,
+            options: Array.from(values).map((val) => ({
+              value: val as string,
+              label: val as string,
             })),
           };
         }
@@ -104,16 +73,7 @@ const selectedVariant = computed(() => {
       const selectedValue = selectedAttributes.value[attrName];
       if (!selectedValue) return true; // No selection, match any
 
-      // Check in flexible attributes first
-      if (v.attributes && v.attributes[attrName] === selectedValue) {
-        return true;
-      }
-
-      // Fallback to legacy fields
-      if (attrName === "color" && v.color === selectedValue) return true;
-      if (attrName === "size" && v.size === selectedValue) return true;
-
-      return false;
+      return v.attributes && v.attributes[attrName] === selectedValue;
     });
   });
 });
@@ -122,16 +82,7 @@ const selectedVariant = computed(() => {
 function isOptionAvailable(attrName: string, optionValue: string): boolean {
   return props.variants.some((v) => {
     // Check this attribute value
-    let matchesAttr = false;
-    if (v.attributes && v.attributes[attrName] === optionValue) {
-      matchesAttr = true;
-    } else if (attrName === "color" && v.color === optionValue) {
-      matchesAttr = true;
-    } else if (attrName === "size" && v.size === optionValue) {
-      matchesAttr = true;
-    }
-
-    if (!matchesAttr) return false;
+    if (!v.attributes || v.attributes[attrName] !== optionValue) return false;
 
     // Check other selected attributes
     const otherMatch = attributeNames.value
@@ -140,11 +91,7 @@ function isOptionAvailable(attrName: string, optionValue: string): boolean {
         const selectedValue = selectedAttributes.value[name];
         if (!selectedValue) return true;
 
-        if (v.attributes && v.attributes[name] === selectedValue) return true;
-        if (name === "color" && v.color === selectedValue) return true;
-        if (name === "size" && v.size === selectedValue) return true;
-
-        return false;
+        return v.attributes && v.attributes[name] === selectedValue;
       });
 
     return otherMatch && v.stockQuantity > 0;
@@ -164,10 +111,14 @@ function getSelectedDisplayValue(attrName: string): string {
 }
 
 // Watch for changes
-watch(selectedVariant, (variant) => {
-  emit("update:modelValue", variant?.id);
-  emit("variantChange", variant);
-});
+watch(
+  selectedVariant,
+  (variant) => {
+    emit("update:modelValue", variant?.id);
+    emit("variantChange", variant);
+  },
+  { immediate: true },
+);
 
 // Initialize with first available variant
 onMounted(() => {
@@ -175,19 +126,14 @@ onMounted(() => {
     const firstAvailable =
       props.variants.find((v) => v.stockQuantity > 0) || props.variants[0];
 
-    attributeNames.value.forEach((attrName) => {
-      // Check flexible attributes first
-      if (firstAvailable.attributes && firstAvailable.attributes[attrName]) {
-        selectedAttributes.value[attrName] =
-          firstAvailable.attributes[attrName];
-      }
-      // Fallback to legacy fields
-      else if (attrName === "color" && firstAvailable.color) {
-        selectedAttributes.value[attrName] = firstAvailable.color;
-      } else if (attrName === "size" && firstAvailable.size) {
-        selectedAttributes.value[attrName] = firstAvailable.size;
-      }
-    });
+    if (firstAvailable) {
+      attributeNames.value.forEach((attrName) => {
+        if (firstAvailable.attributes && firstAvailable.attributes[attrName]) {
+          selectedAttributes.value[attrName] =
+            firstAvailable.attributes[attrName];
+        }
+      });
+    }
   }
 });
 

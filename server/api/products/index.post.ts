@@ -1,56 +1,39 @@
-import { useDb } from "../../utils/db";
 import { product, productVariant, productImage } from "../../db/schema";
+import { createProductRequestSchema } from "../../utils/validation";
 
 export default defineEventHandler(async (event) => {
   const db = useDb(event);
   const body = await readBody(event);
 
-  // Validate required fields
-  if (!body.title) {
+  // Validate request body
+  const result = createProductRequestSchema.safeParse(body);
+  if (!result.success) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Title is required",
+      statusMessage: "Validation error",
+      data: result.error.format(),
     });
   }
 
+  const validatedData = result.data;
+
   // Generate slug if not provided
   const slug =
-    body.slug ||
-    body.title
+    validatedData.slug ||
+    validatedData.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
 
   try {
     // Create product with new flexible attributes
+    const { variants, images, ...productData } = validatedData;
     const [newProduct] = await db
       .insert(product)
       .values({
-        title: body.title,
+        ...productData,
         slug,
-        description: body.description || null,
-        shortDescription: body.shortDescription || null,
-        thumbnail: body.thumbnail || null,
-        status: body.status || "draft",
-        categoryId: body.categoryId || null,
-        taxRateId: body.taxRateId || null,
-        // Legacy fields
-        colors: body.colors || [],
-        sizes: body.sizes || [],
-        // Flexible variant attributes
-        variantAttributes: body.variantAttributes || {},
-        // SEO
-        metaTitle: body.metaTitle || null,
-        metaDescription: body.metaDescription || null,
-        // Pricing
-        basePrice: body.basePrice || 0,
-        compareAtPrice: body.compareAtPrice || null,
-        // Flags
-        isFeatured: body.isFeatured || false,
-        isNew: body.isNew || false,
-        trackInventory: body.trackInventory ?? true,
-        sort: body.sort ?? 0,
-      })
+      } as any)
       .returning();
 
     // Create variants if provided
@@ -63,9 +46,6 @@ export default defineEventHandler(async (event) => {
           price: variant.price || 0,
           compareAtPrice: variant.compareAtPrice || null,
           costPrice: variant.costPrice || null,
-          // Legacy fields
-          color: variant.color || null,
-          size: variant.size || null,
           // Flexible attributes
           attributes: variant.attributes || {},
           // Weight & dimensions

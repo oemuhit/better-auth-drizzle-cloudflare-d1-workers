@@ -40,7 +40,9 @@ export default defineEventHandler(async (event) => {
     const priceRange =
       prices.length > 0
         ? { min: Math.min(...prices), max: Math.max(...prices) }
-        : null;
+        : foundProduct.basePrice !== null
+          ? { min: foundProduct.basePrice, max: foundProduct.basePrice }
+          : null;
 
     // Calculate total stock
     const totalStock = foundProduct.variants.reduce(
@@ -48,13 +50,20 @@ export default defineEventHandler(async (event) => {
       0,
     );
 
+    // Determine stock status
+    // If variants exist, use total stock. If no variants, assume in stock if active.
+    const inStock =
+      foundProduct.variants.length > 0
+        ? totalStock > 0
+        : foundProduct.status === "active";
+
     return {
       success: true,
       data: {
         ...foundProduct,
         priceRange,
-        totalStock,
-        inStock: totalStock > 0,
+        totalStock: foundProduct.variants.length > 0 ? totalStock : 1, // Default to 1 if no variants but active
+        inStock,
       },
     };
   } catch (error: any) {

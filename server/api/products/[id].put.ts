@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { product, productVariant, productImage } from "../../db/schema";
+import { createProductRequestSchema } from "../../utils/validation";
 
 export default defineEventHandler(async (event) => {
   const db = useDb(event);
@@ -15,6 +16,18 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
+    // Validate request body
+    const result = createProductRequestSchema.partial().safeParse(body);
+    if (!result.success) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Validation error",
+        data: result.error.format(),
+      });
+    }
+
+    const validatedData = result.data;
+
     // Check if product exists
     const existing = await db.query.product.findFirst({
       where: eq(product.id, id),
@@ -27,46 +40,18 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // Prepare update data
-    const updateData: Partial<typeof product.$inferInsert> = {};
-
-    if (body.title !== undefined) updateData.title = body.title;
-    if (body.slug !== undefined) updateData.slug = body.slug;
-    if (body.description !== undefined)
-      updateData.description = body.description;
-    if (body.shortDescription !== undefined)
-      updateData.shortDescription = body.shortDescription;
-    if (body.thumbnail !== undefined) updateData.thumbnail = body.thumbnail;
-    if (body.status !== undefined) updateData.status = body.status;
-    if (body.categoryId !== undefined) updateData.categoryId = body.categoryId;
-    if (body.taxRateId !== undefined) updateData.taxRateId = body.taxRateId;
-    // Legacy fields
-    if (body.colors !== undefined) updateData.colors = body.colors;
-    if (body.sizes !== undefined) updateData.sizes = body.sizes;
-    // Flexible variant attributes
-    if (body.variantAttributes !== undefined)
-      updateData.variantAttributes = body.variantAttributes;
-    // SEO
-    if (body.metaTitle !== undefined) updateData.metaTitle = body.metaTitle;
-    if (body.metaDescription !== undefined)
-      updateData.metaDescription = body.metaDescription;
-    // Pricing
-    if (body.basePrice !== undefined) updateData.basePrice = body.basePrice;
-    if (body.compareAtPrice !== undefined)
-      updateData.compareAtPrice = body.compareAtPrice;
-    // Flags
-    if (body.isFeatured !== undefined) updateData.isFeatured = body.isFeatured;
-    if (body.isNew !== undefined) updateData.isNew = body.isNew;
-    if (body.trackInventory !== undefined)
-      updateData.trackInventory = body.trackInventory;
-    if (body.sort !== undefined) updateData.sort = body.sort;
-
     // Update product
-    const [updated] = await db
-      .update(product)
-      .set(updateData)
-      .where(eq(product.id, id))
-      .returning();
+    const { variants, images, ...updateData } = validatedData;
+
+    if (Object.keys(updateData).length > 0) {
+      await db
+        .update(product)
+        .set({
+          ...updateData as any,
+          updatedAt: new Date(),
+        })
+        .where(eq(product.id, id));
+    }
 
     // Update variants if provided
     if (body.variants && Array.isArray(body.variants)) {
@@ -82,9 +67,6 @@ export default defineEventHandler(async (event) => {
           price: variant.price || 0,
           compareAtPrice: variant.compareAtPrice || null,
           costPrice: variant.costPrice || null,
-          // Legacy fields
-          color: variant.color || null,
-          size: variant.size || null,
           // Flexible attributes
           attributes: variant.attributes || {},
           // Weight & dimensions

@@ -9,12 +9,12 @@ definePageMeta({
 const route = useRoute();
 const id = computed(() => route.params.id as string);
 
-const { data: orderData, error } = await useFetch(`/api/orders/${id.value}`);
+const { data: orderData, error: fetchError } = await useFetch(`/api/orders/${id.value}`);
 
-if (error.value) {
+if (fetchError.value) {
   throw createError({
-    statusCode: 404,
-    statusMessage: "Sipariş bulunamadı",
+    statusCode: fetchError.value.statusCode || 404,
+    statusMessage: fetchError.value.statusMessage || "Sipariş bulunamadı",
   });
 }
 
@@ -33,7 +33,7 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-function formatDate(date: number | Date) {
+function formatDate(date: string | number | Date) {
   return new Intl.DateTimeFormat("tr-TR", {
     year: "numeric",
     month: "long",

@@ -16,6 +16,8 @@ import {
   product,
   productVariant,
   customerAddress,
+  order,
+  orderItem,
 } from "../../../db/schema";
 
 export default defineEventHandler(async (event) => {
@@ -83,8 +85,8 @@ export default defineEventHandler(async (event) => {
     // Get billing address (or use shipping address)
     const billingAddr = billingAddressId
       ? await db.query.customerAddress.findFirst({
-          where: eq(customerAddress.id, billingAddressId),
-        })
+        where: eq(customerAddress.id, billingAddressId),
+      })
       : shippingAddr;
 
     if (!billingAddr) {
@@ -180,6 +182,60 @@ export default defineEventHandler(async (event) => {
     const siteUrl = config.public.siteUrl;
     const callbackUrl = `${siteUrl}/api/payment/iyzico/callback`;
 
+    // Generate order number
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+    // Create the order sequentially (D1 transaction emulation issue fix)
+    // 1. Create order
+    const [newOrder] = await db
+      .insert(order)
+      .values({
+        orderNumber,
+        userId,
+        status: "pending",
+        paymentStatus: "not_paid",
+        billingAddressId: billingAddr.id,
+        shippingAddressId: shippingAddr.id,
+        subtotal,
+        taxTotal,
+        shippingTotal: 0,
+        discountTotal: 0,
+        total,
+        notes,
+      })
+      .returning();
+
+    // 2. Create order items
+    for (const item of userCart.items) {
+      const itemPrice =
+        item.productVariant?.price ?? item.product.basePrice ?? 0;
+      const itemTotal = itemPrice * item.quantity;
+
+      let variantInfo: string | null = null;
+      if (item.productVariant) {
+        const parts: string[] = [];
+        if ((item.productVariant as any).color)
+          parts.push(`Renk: ${(item.productVariant as any).color}`);
+        if ((item.productVariant as any).size)
+          parts.push(`Beden: ${(item.productVariant as any).size}`);
+        if (item.productVariant.sku)
+          parts.push(`SKU: ${item.productVariant.sku}`);
+        if (parts.length > 0) variantInfo = parts.join(", ");
+      }
+
+      await db.insert(orderItem).values({
+        orderId: newOrder.id,
+        productId: item.productId,
+        productVariantId: item.productVariantId,
+        productTitle: item.product.title,
+        variantInfo,
+        quantity: item.quantity,
+        price: itemPrice,
+        subtotal: itemTotal,
+        total: itemTotal,
+      });
+    }
+
     // Initialize iyzico
     const iyzipay = useIyzico(event);
 
@@ -189,7 +245,7 @@ export default defineEventHandler(async (event) => {
       price: formatIyzicoPrice(total),
       paidPrice: formatIyzicoPrice(total),
       currency: IYZICO.CURRENCY.TRY,
-      basketId: userCart.id,
+      basketId: newOrder.id, // Use order ID as basket ID
       paymentGroup: IYZICO.PAYMENT_GROUP.PRODUCT,
       callbackUrl,
       enabledInstallments: [1, 2, 3, 6, 9, 12],
@@ -205,14 +261,13 @@ export default defineEventHandler(async (event) => {
 
     if (result.status !== "success") {
       console.error("iyzico init error:", result);
+      // Optional: Delete the pending order if init fails? 
+      // Better to keep it as "cancelled" or just leave it "pending" for analytics.
       throw createError({
         statusCode: 400,
         statusMessage: result.errorMessage || "Ödeme başlatılamadı",
       });
     }
-
-    // Store payment info in session or database for later verification
-    // For now, we'll return the token and let the client handle it
 
     return {
       success: true,
@@ -221,16 +276,8 @@ export default defineEventHandler(async (event) => {
         checkoutFormContent: result.checkoutFormContent,
         paymentPageUrl: result.paymentPageUrl,
         conversationId,
-        basketId: userCart.id,
+        basketId: newOrder.id,
         total,
-        // Store these for the callback
-        metadata: {
-          shippingAddressId,
-          billingAddressId: billingAddressId || shippingAddressId,
-          notes,
-          subtotal,
-          taxTotal,
-        },
       },
     };
   } catch (error: any) {

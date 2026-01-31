@@ -7,6 +7,9 @@ import {
   GripVertical,
   ExternalLink,
 } from "lucide-vue-next";
+import { useForm } from "vee-validate";
+import { toTypedSchema } from "@vee-validate/zod";
+import { createProductRequestSchema } from "~~/server/utils/validation";
 
 import type {
   Category,
@@ -76,10 +79,8 @@ interface ProductFormVariant {
   lowStockThreshold: number;
   weight: number | null;
   weightUnit: string;
+  image: string | null;
   isActive: boolean;
-  // Legacy fields for backwards compatibility
-  color?: string;
-  size?: string;
 }
 
 interface ProductFormData {
@@ -93,9 +94,6 @@ interface ProductFormData {
   taxRateId: string;
   // Flexible variant attributes
   variantAttributes: Record<string, VariantAttributeDefinition>;
-  // Legacy fields (kept for backwards compatibility)
-  colors: string[];
-  sizes: string[];
   // New fields
   basePrice: number;
   compareAtPrice: number | undefined;
@@ -104,6 +102,8 @@ interface ProductFormData {
   trackInventory: boolean;
   metaTitle: string;
   metaDescription: string;
+  // Gallery
+  images: { url: string; alt: string | null }[];
   // Variants
   variants: ProductFormVariant[];
 }
@@ -133,8 +133,6 @@ const formData = reactive<ProductFormData>({
   categoryId: props.product?.categoryId || "none",
   taxRateId: (props.product as any)?.taxRateId || "none",
   variantAttributes: (props.product as any)?.variantAttributes || {},
-  colors: (props.product?.colors as string[]) || [],
-  sizes: (props.product?.sizes as string[]) || [],
   basePrice: (props.product as any)?.basePrice || 0,
   compareAtPrice: (props.product as any)?.compareAtPrice || undefined,
   isFeatured: (props.product as any)?.isFeatured || false,
@@ -142,6 +140,11 @@ const formData = reactive<ProductFormData>({
   trackInventory: (props.product as any)?.trackInventory ?? true,
   metaTitle: (props.product as any)?.metaTitle || "",
   metaDescription: (props.product as any)?.metaDescription || "",
+  images:
+    (props.product as any)?.images?.map((img: any) => ({
+      url: img.url,
+      alt: img.alt || null,
+    })) || [],
   variants:
     props.product?.variants?.map((v) => ({
       id: v.id,
@@ -155,27 +158,49 @@ const formData = reactive<ProductFormData>({
       lowStockThreshold: (v as any).lowStockThreshold || 5,
       weight: v.weight,
       weightUnit: v.weightUnit || "g",
+      image: v.image || null,
       isActive: (v as any).isActive ?? true,
-      color: v.color || "",
-      size: v.size || "",
     })) || [],
 });
+
+// Setup vee-validate form
+const {
+  handleSubmit: handleVeeSubmit,
+  errors,
+  setValues,
+  defineField,
+} = useForm({
+  validationSchema: toTypedSchema(createProductRequestSchema),
+  initialValues: formData as any,
+});
+
+// Define fields with component sync
+const [title] = defineField("title");
+const [slug] = defineField("slug");
+const [basePrice] = defineField("basePrice");
+const [status] = defineField("status");
+const [description] = defineField("description");
+const [shortDescription] = defineField("shortDescription");
+const [categoryId] = defineField("categoryId");
+const [taxRateId] = defineField("taxRateId");
+const [thumbnail] = defineField("thumbnail");
+
+const serverError = ref<string | null>(null);
 
 // Computed: Get attribute names for variant table columns
 const attributeNames = computed(() => Object.keys(formData.variantAttributes));
 
-// Auto-generate slug from title
-watch(
-  () => formData.title,
-  (title) => {
-    if (!props.product) {
-      formData.slug = title
+// Sync title to slug (existing logic updated)
+watch(title, (newTitle) => {
+  if (!props.product && newTitle) {
+    setValues({
+      slug: newTitle
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
-    }
-  },
-);
+        .replace(/(^-|-$)/g, ""),
+    });
+  }
+});
 
 // ============================================================================
 // Attribute Management
@@ -281,9 +306,8 @@ function addVariant() {
     lowStockThreshold: 5,
     weight: null,
     weightUnit: "g",
+    image: null,
     isActive: true,
-    color: "",
-    size: "",
   };
 
   // Initialize attributes with empty values
@@ -339,10 +363,8 @@ function generateVariantCombinations() {
       lowStockThreshold: 5,
       weight: null,
       weightUnit: "g",
+      image: null,
       isActive: true,
-      // Legacy fields
-      color: attributes.color || "",
-      size: attributes.size || "",
     };
   });
 }
@@ -365,31 +387,40 @@ function getAttributeDisplayValue(
 // ============================================================================
 // Submit
 // ============================================================================
-async function handleSubmit() {
-  if (!formData.title) return;
-
+const handleSubmit = handleVeeSubmit(async (values) => {
   isSubmitting.value = true;
+  serverError.value = null;
   try {
-    // Sync legacy fields from attributes for backwards compatibility
-    formData.variants.forEach((v) => {
-      if (v.attributes.color) v.color = v.attributes.color;
-      if (v.attributes.size) v.size = v.attributes.size;
-    });
-
-    // Extract unique colors and sizes from variants for legacy fields
-    const uniqueColors = new Set<string>();
-    const uniqueSizes = new Set<string>();
-    formData.variants.forEach((v) => {
-      if (v.attributes.color) uniqueColors.add(v.attributes.color);
-      if (v.attributes.size) uniqueSizes.add(v.attributes.size);
-    });
-    formData.colors = Array.from(uniqueColors);
-    formData.sizes = Array.from(uniqueSizes);
-
-    emit("submit", { ...formData });
+    // Merge variants and images which might have been updated manually in formData
+    const finalData = {
+      ...values,
+      variants: formData.variants,
+      images: formData.images,
+      variantAttributes: formData.variantAttributes,
+    };
+    emit("submit", finalData as any);
   } finally {
     isSubmitting.value = false;
   }
+});
+
+// Method to set server errors from parent
+defineExpose({
+  setServerError: (error: string) => {
+    serverError.value = error;
+  },
+});
+
+// Gallery Management
+const newImageUrl = ref("");
+function addGalleryImage() {
+  if (!newImageUrl.value) return;
+  formData.images.push({ url: newImageUrl.value, alt: "" });
+  newImageUrl.value = "";
+}
+
+function removeGalleryImage(index: number) {
+  formData.images.splice(index, 1);
 }
 
 const statusOptions = [
@@ -411,10 +442,28 @@ const weightUnits = [
 
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-6">
+    <!-- Server Error Display -->
+    <Alert v-if="serverError" variant="destructive">
+      <AlertTitle>Hata</AlertTitle>
+      <AlertDescription>{{ serverError }}</AlertDescription>
+    </Alert>
+
     <!-- Basic Info -->
     <Card>
-      <CardHeader>
+      <CardHeader class="flex flex-row items-center justify-between space-y-0">
         <CardTitle>Temel Bilgiler</CardTitle>
+        <Button
+          v-if="formData.slug && product"
+          type="button"
+          variant="ghost"
+          size="sm"
+          as-child
+        >
+          <NuxtLink :to="`/shop/${formData.slug}`" target="_blank">
+            <ExternalLink class="h-4 w-4 mr-2" />
+            Mağazada Görüntüle
+          </NuxtLink>
+        </Button>
       </CardHeader>
       <CardContent class="space-y-4">
         <div class="grid gap-4 sm:grid-cols-2">
@@ -422,15 +471,26 @@ const weightUnits = [
             <Label for="title">Ürün Adı *</Label>
             <Input
               id="title"
-              v-model="formData.title"
+              v-model="title"
               placeholder="Ürün adı"
-              required
+              :class="{ 'border-destructive': errors.title }"
             />
+            <p v-if="errors.title" class="text-xs text-destructive">
+              {{ errors.title }}
+            </p>
           </div>
 
           <div class="space-y-2">
             <Label for="slug">URL Slug</Label>
-            <Input id="slug" v-model="formData.slug" placeholder="urun-adi" />
+            <Input
+              id="slug"
+              v-model="slug"
+              placeholder="urun-adi"
+              :class="{ 'border-destructive': errors.slug }"
+            />
+            <p v-if="errors.slug" class="text-xs text-destructive">
+              {{ errors.slug }}
+            </p>
           </div>
         </div>
 
@@ -438,26 +498,34 @@ const weightUnits = [
           <Label for="shortDescription">Kısa Açıklama</Label>
           <Input
             id="shortDescription"
-            v-model="formData.shortDescription"
+            v-model="shortDescription"
             placeholder="Ürünün kısa açıklaması"
+            :class="{ 'border-destructive': errors.shortDescription }"
           />
+          <p v-if="errors.shortDescription" class="text-xs text-destructive">
+            {{ errors.shortDescription }}
+          </p>
         </div>
 
         <div class="space-y-2">
           <Label for="description">Detaylı Açıklama</Label>
           <Textarea
             id="description"
-            v-model="formData.description"
+            v-model="description"
             placeholder="Ürün açıklaması..."
             rows="4"
+            :class="{ 'border-destructive': errors.description }"
           />
+          <p v-if="errors.description" class="text-xs text-destructive">
+            {{ errors.description }}
+          </p>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
           <div class="space-y-2">
             <Label for="category">Kategori</Label>
-            <Select v-model="formData.categoryId">
-              <SelectTrigger>
+            <Select v-model="categoryId">
+              <SelectTrigger :class="{ 'border-destructive': errors.categoryId }">
                 <SelectValue placeholder="Kategori seçin" />
               </SelectTrigger>
               <SelectContent>
@@ -471,12 +539,15 @@ const weightUnits = [
                 </SelectItem>
               </SelectContent>
             </Select>
+            <p v-if="errors.categoryId" class="text-xs text-destructive">
+              {{ errors.categoryId }}
+            </p>
           </div>
 
           <div class="space-y-2">
             <Label for="status">Durum</Label>
-            <Select v-model="formData.status">
-              <SelectTrigger>
+            <Select v-model="status">
+              <SelectTrigger :class="{ 'border-destructive': errors.status }">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -489,13 +560,16 @@ const weightUnits = [
                 </SelectItem>
               </SelectContent>
             </Select>
+            <p v-if="errors.status" class="text-xs text-destructive">
+              {{ errors.status }}
+            </p>
           </div>
         </div>
 
         <div class="space-y-2">
           <Label for="taxRate">Vergi Oranı</Label>
-          <Select v-model="formData.taxRateId">
-            <SelectTrigger>
+          <Select v-model="taxRateId">
+            <SelectTrigger :class="{ 'border-destructive': errors.taxRateId }">
               <SelectValue placeholder="Vergi oranı seçin" />
             </SelectTrigger>
             <SelectContent>
@@ -509,15 +583,77 @@ const weightUnits = [
               </SelectItem>
             </SelectContent>
           </Select>
+          <p v-if="errors.taxRateId" class="text-xs text-destructive">
+            {{ errors.taxRateId }}
+          </p>
         </div>
 
         <div class="space-y-2">
           <Label for="thumbnail">Thumbnail URL</Label>
-          <Input
-            id="thumbnail"
-            v-model="formData.thumbnail"
-            placeholder="https://..."
-          />
+          <div class="flex gap-2">
+            <Input
+              id="thumbnail"
+              v-model="thumbnail"
+              placeholder="https://..."
+              class="flex-1"
+              :class="{ 'border-destructive': errors.thumbnail }"
+            />
+            <div
+              v-if="thumbnail"
+              class="w-10 h-10 rounded border overflow-hidden shrink-0"
+            >
+              <img :src="thumbnail" class="w-full h-full object-cover" />
+            </div>
+          </div>
+          <p v-if="errors.thumbnail" class="text-xs text-destructive">
+            {{ errors.thumbnail }}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- Product Gallery -->
+    <Card>
+      <CardHeader>
+        <CardTitle>Ürün Galerisi</CardTitle>
+        <CardDescription
+          >Ürüne ait fotoğraflar. Bu fotoğraflar varyantlarda da
+          kullanılabilir.</CardDescription
+        >
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex gap-2">
+          <Input v-model="newImageUrl" placeholder="Resim URL (https://...)" />
+          <Button type="button" variant="outline" @click="addGalleryImage">
+            <Plus class="h-4 w-4 mr-2" />
+            Ekle
+          </Button>
+        </div>
+
+        <div v-if="formData.images.length > 0" class="grid grid-cols-4 gap-4">
+          <div
+            v-for="(img, index) in formData.images"
+            :key="index"
+            class="relative group aspect-square rounded-lg overflow-hidden border bg-muted"
+          >
+            <img :src="img.url" class="w-full h-full object-cover" />
+            <div
+              class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            >
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                class="h-8 w-8"
+                @click="removeGalleryImage(index)"
+              >
+                <Trash2 class="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div v-else class="text-center py-4 text-muted-foreground text-sm">
+          Henüz galeriye resim eklenmedi.
         </div>
       </CardContent>
     </Card>
@@ -537,12 +673,16 @@ const weightUnits = [
             <Label for="basePrice">Temel Fiyat</Label>
             <Input
               id="basePrice"
-              v-model.number="formData.basePrice"
+              v-model.number="basePrice"
               type="number"
               step="0.01"
               min="0"
               placeholder="0.00"
+              :class="{ 'border-destructive': errors.basePrice }"
             />
+            <p v-if="errors.basePrice" class="text-xs text-destructive">
+              {{ errors.basePrice }}
+            </p>
           </div>
           <div class="space-y-2">
             <Label for="compareAtPrice"
@@ -840,14 +980,16 @@ const weightUnits = [
           <div
             class="hidden sm:grid gap-2 text-xs font-medium text-muted-foreground px-4"
             :style="{
-              gridTemplateColumns: `repeat(${4 + attributeNames.length}, 1fr) auto`,
+              gridTemplateColumns: `repeat(${6 + attributeNames.length}, 1fr) auto`,
             }"
           >
+            <div>Resim</div>
             <div>SKU</div>
-            <div>Fiyat</div>
             <div v-for="attrName in attributeNames" :key="attrName">
               {{ formData.variantAttributes[attrName]?.label }}
             </div>
+            <div>Fiyat</div>
+            <div>İndirimsiz Fiyat</div>
             <div>Stok</div>
             <div>Aktif</div>
             <div></div>
@@ -859,22 +1001,82 @@ const weightUnits = [
             :key="index"
             class="grid gap-2 p-4 border rounded-lg items-center"
             :style="{
-              gridTemplateColumns: `repeat(${4 + attributeNames.length}, 1fr) auto`,
+              gridTemplateColumns: `repeat(${6 + attributeNames.length}, 1fr) auto`,
             }"
           >
             <div class="space-y-1">
-              <Label class="sm:hidden text-xs">SKU</Label>
-              <Input v-model="variant.sku" placeholder="SKU" class="h-9" />
+              <Label class="sm:hidden text-xs">z</Label>
+              <Popover>
+                <PopoverTrigger as-child>
+                  <div
+                    class="h-9 w-9 rounded-md border bg-muted cursor-pointer overflow-hidden flex items-center justify-center relative group"
+                  >
+                    <img
+                      v-if="variant.image"
+                      :src="variant.image"
+                      class="h-full w-full object-cover"
+                    />
+                    <div
+                      v-else
+                      class="text-[10px] text-muted-foreground uppercase"
+                    >
+                      Resim
+                    </div>
+                    <div
+                      class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                    >
+                      <Settings2 class="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent class="w-80">
+                  <div class="space-y-4">
+                    <div class="text-sm font-medium">Varyant Resmi</div>
+                    <div class="space-y-2">
+                      <Label class="text-xs">URL Girin</Label>
+                      <Input
+                        :model-value="variant.image || ''"
+                        @update:model-value="variant.image = ($event as string) || null"
+                        placeholder="https://..."
+                        class="h-8 text-xs"
+                      />
+                    </div>
+                    <div v-if="formData.images.length > 0" class="space-y-2">
+                      <Label class="text-xs">Galeriden Seç</Label>
+                      <div class="grid grid-cols-5 gap-2">
+                        <div
+                          v-for="(img, imgIdx) in formData.images"
+                          :key="imgIdx"
+                          class="aspect-square rounded border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                          :class="{
+                            'ring-2 ring-primary': variant.image === img.url,
+                          }"
+                          @click="variant.image = img.url"
+                        >
+                          <img
+                            :src="img.url"
+                            class="h-full w-full object-cover"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      v-if="variant.image"
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      class="w-full text-xs h-8"
+                      @click="variant.image = null"
+                    >
+                      Resmi Kaldır
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div class="space-y-1">
-              <Label class="sm:hidden text-xs">Fiyat</Label>
-              <Input
-                v-model.number="variant.price"
-                type="number"
-                step="0.01"
-                min="0"
-                class="h-9"
-              />
+              <Label class="sm:hidden text-xs">SKU</Label>
+              <Input v-model="variant.sku" placeholder="SKU" class="h-9" />
             </div>
             <!-- Dynamic Attribute Fields -->
             <div
@@ -910,6 +1112,28 @@ const weightUnits = [
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div class="space-y-1">
+              <Label class="sm:hidden text-xs">Fiyat</Label>
+              <Input
+                v-model.number="variant.price"
+                type="number"
+                step="0.01"
+                min="0"
+                class="h-9"
+              />
+            </div>
+            <div class="space-y-1">
+              <Label class="sm:hidden text-xs">İndirimsiz Fiyat</Label>
+              <Input
+                :model-value="variant.compareAtPrice ?? ''"
+                @update:model-value="variant.compareAtPrice = $event !== '' ? Number($event) : null"
+                type="number"
+                step="0.01"
+                min="0"
+                class="h-9"
+                placeholder="0.00"
+              />
             </div>
             <div class="space-y-1">
               <Label class="sm:hidden text-xs">Stok</Label>

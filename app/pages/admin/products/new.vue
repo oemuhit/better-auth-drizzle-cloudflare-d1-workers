@@ -16,6 +16,8 @@ const { data: categoriesData } = await useFetch("/api/categories", {
 
 const categories = computed(() => categoriesData.value?.data || []);
 
+const formRef = ref<any>(null);
+
 async function handleSubmit(formData: any) {
   try {
     await $fetch("/api/products", {
@@ -28,7 +30,8 @@ async function handleSubmit(formData: any) {
     });
     navigateTo("/admin/products");
   } catch (error: any) {
-    alert(error.data?.statusMessage || "Ürün oluşturulamadı");
+    const message = error.data?.statusMessage || "Ürün oluşturulamadı";
+    formRef.value?.setServerError(message);
   }
 }
 
@@ -54,7 +57,8 @@ function handleCancel() {
     </div>
 
     <ProductForm
-      :categories="categories"
+      ref="formRef"
+      :categories="categories as any"
       @submit="handleSubmit"
       @cancel="handleCancel"
     />

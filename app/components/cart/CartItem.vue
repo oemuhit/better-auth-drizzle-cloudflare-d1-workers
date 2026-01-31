@@ -49,12 +49,10 @@ const imageUrl = computed(() => {
 
 // Get variant info
 const variantInfo = computed(() => {
-  if (!props.item.productVariant) return null;
-  const parts = [];
-  if (props.item.productVariant.color)
-    parts.push(props.item.productVariant.color);
-  if (props.item.productVariant.size)
-    parts.push(props.item.productVariant.size);
+  if (!props.item.productVariant?.attributes) return null;
+  const parts = Object.values(props.item.productVariant.attributes).filter(
+    Boolean,
+  );
   return parts.length > 0 ? parts.join(" / ") : null;
 });
 </script>

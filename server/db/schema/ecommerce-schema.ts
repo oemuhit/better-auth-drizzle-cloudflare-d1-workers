@@ -144,9 +144,6 @@ export const product = sqliteTable(
     taxRateId: text("tax_rate_id").references(() => taxRate.id, {
       onDelete: "set null",
     }),
-    // Legacy fields (kept for backwards compatibility)
-    colors: text("colors", { mode: "json" }).$type<string[]>().default([]),
-    sizes: text("sizes", { mode: "json" }).$type<string[]>().default([]),
     // Flexible attribute definitions for this product
     // Stores available options for each attribute type
     // Example: { "color": { name: "color", label: "Renk", type: "color", options: [...] }, "size": {...} }
@@ -203,9 +200,6 @@ export const productVariant = sqliteTable(
     price: real("price").notNull().default(0),
     compareAtPrice: real("compare_at_price"),
     costPrice: real("cost_price"), // Cost for profit calculation
-    // Legacy fields (kept for backwards compatibility)
-    color: text("color"),
-    size: text("size"),
     // Flexible attributes - stores the actual attribute values for this variant
     // Example: { "color": "Red", "size": "XL", "material": "Cotton", "storage": "256GB" }
     attributes: text("attributes", { mode: "json" })

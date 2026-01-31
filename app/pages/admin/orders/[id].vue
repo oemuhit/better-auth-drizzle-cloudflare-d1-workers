@@ -8,21 +8,21 @@ definePageMeta({
 const route = useRoute();
 const id = computed(() => route.params.id as string);
 
-// Fetch order (using admin endpoint to get user info)
+// Fetch order (using new direct admin endpoint)
 const {
   data: orderData,
-  error,
+  error: fetchError,
   refresh,
-} = await useFetch(`/api/admin/orders`, {
-  query: { limit: 1 },
-  transform: (data: any) => {
-    const order = data.data?.find((o: any) => o.id === id.value);
-    return order ? { data: order } : null;
-  },
-});
+} = await useFetch(`/api/admin/orders/${id.value}`);
 
-// If not found in list, try direct fetch with user's order endpoint
 const order = computed(() => orderData.value?.data);
+
+if (fetchError.value) {
+  throw createError({
+    statusCode: fetchError.value.statusCode || 404,
+    statusMessage: fetchError.value.statusMessage || "Sipariş bulunamadı",
+  });
+}
 
 if (!order.value) {
   throw createError({
@@ -65,7 +65,7 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-function formatDate(date: number | Date) {
+function formatDate(date: string | number | Date) {
   return new Intl.DateTimeFormat("tr-TR", {
     year: "numeric",
     month: "long",
@@ -192,7 +192,7 @@ const fulfillmentOptions = [
                 <Select
                   :model-value="order.status"
                   :disabled="isUpdating"
-                  @update:model-value="(val) => updateStatus('status', val)"
+                  @update:model-value="(val) => updateStatus('status', val as string)"
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -215,7 +215,7 @@ const fulfillmentOptions = [
                   :model-value="order.paymentStatus"
                   :disabled="isUpdating"
                   @update:model-value="
-                    (val) => updateStatus('paymentStatus', val)
+                    (val) => updateStatus('paymentStatus', val as string)
                   "
                 >
                   <SelectTrigger>
@@ -239,7 +239,7 @@ const fulfillmentOptions = [
                   :model-value="order.fulfillmentStatus"
                   :disabled="isUpdating"
                   @update:model-value="
-                    (val) => updateStatus('fulfillmentStatus', val)
+                    (val) => updateStatus('fulfillmentStatus', val as string)
                   "
                 >
                   <SelectTrigger>

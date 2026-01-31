@@ -61,16 +61,45 @@ const selectedVariant = computed(() => {
 // Current image
 const currentImageIndex = ref(0);
 const images = computed(() => {
-  const imgs = [];
-  if (product.value?.thumbnail) {
-    imgs.push({ url: product.value.thumbnail, alt: product.value.title });
-  }
+  const imgs: { url: string; alt: string | null }[] = [];
+  const urls = new Set<string>();
+
+  const addImage = (url: string | null | undefined, alt: string | null) => {
+    if (url && !urls.has(url)) {
+      urls.add(url);
+      imgs.push({ url, alt });
+    }
+  };
+
+  addImage(product.value?.thumbnail, product.value?.title ?? null);
+
   if (product.value?.images) {
-    imgs.push(...product.value.images);
+    product.value.images.forEach((img: any) => addImage(img.url, img.alt));
   }
+
+  if (product.value?.variants) {
+    product.value.variants.forEach((v: any) =>
+      addImage(v.image, product.value?.title ?? null),
+    );
+  }
+
   return imgs.length > 0
     ? imgs
     : [{ url: "/placeholder-product.jpg", alt: "Placeholder" }];
+});
+
+// Switch image when variant changes
+watch(selectedVariant, (newVariant) => {
+  if (newVariant?.image) {
+    const index = images.value.findIndex((img) => img.url === newVariant.image);
+    if (index !== -1) {
+      currentImageIndex.value = index;
+    }
+  }
+});
+
+const mainImage = computed(() => {
+  return images.value[currentImageIndex.value] || images.value[0];
 });
 
 function formatPrice(price: number) {
@@ -126,8 +155,9 @@ const reviewCount = 12;
             class="aspect-square rounded-2xl overflow-hidden bg-muted relative group"
           >
             <img
-              :src="images[currentImageIndex].url"
-              :alt="images[currentImageIndex].alt || product.title"
+              v-if="mainImage"
+              :src="mainImage.url"
+              :alt="mainImage.alt || (product?.title ?? '')"
               class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
             <!-- Wishlist Button -->
@@ -218,6 +248,12 @@ const reviewCount = 12;
               }}
             </span>
             <span
+              v-else-if="product.basePrice !== null"
+              class="text-3xl font-bold text-primary"
+            >
+              {{ formatPrice(product.basePrice) }}
+            </span>
+            <span
               v-if="
                 selectedVariant?.compareAtPrice &&
                 selectedVariant.compareAtPrice > selectedVariant.price
@@ -243,15 +279,13 @@ const reviewCount = 12;
           <div v-if="product.variants && product.variants.length > 0">
             <ProductVariantSelect
               v-model="selectedVariantId"
-              :variants="product.variants"
-              :variant-attributes="product.variantAttributes"
-              :colors="product.colors"
-              :sizes="product.sizes"
+              :variants="product.variants as any"
+              :variant-attributes="product.variantAttributes as any"
             />
           </div>
 
           <!-- Stock Status -->
-          <div class="flex items-center gap-2">
+          <div v-if="product" class="flex items-center gap-2">
             <div
               class="h-3 w-3 rounded-full"
               :class="product.inStock ? 'bg-green-500' : 'bg-red-500'"
