@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowRight } from "lucide-vue-next";
-
+import { motion } from "motion-v";
 definePageMeta({
   layout: "default",
 });
@@ -24,6 +24,8 @@ const products = computed(() => productsData.value?.data || []);
 </script>
 
 <template>
+
+   
   <div>
     <!-- Hero Section -->
     <HeroSection
@@ -34,7 +36,11 @@ const products = computed(() => productsData.value?.data || []);
       button-link="/shop"
       image-url="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800"
     />
-
+    <motion.div
+        class="box"
+        :animate="{ rotate: 360 }"
+        :transition="{ duration: 1 }"
+    />
     <!-- Feature Icons -->
     <FeatureIcons />
 
@@ -179,3 +185,12 @@ const products = computed(() => productsData.value?.data || []);
     </section>
   </div>
 </template>
+
+<style scoped>
+.box {
+    width: 100px;
+    height: 100px;
+    background-color: #0cdcf7;
+    border-radius: 5px;
+}
+</style>
