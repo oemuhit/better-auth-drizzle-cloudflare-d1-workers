@@ -101,8 +101,9 @@ function getAddressDisplay(address: any) {
                 :key="item.id"
                 class="flex gap-4 py-4 first:pt-0 last:pb-0"
               >
-                <img
-                  :src="item.product?.thumbnail || '/placeholder-product.jpg'"
+                <NuxtImg
+                  :src="item.productVariant?.image || item.product?.images?.[0]?.url || item.product?.thumbnail || '/placeholder-product.avif'"
+                  preset="thumbnail"
                   :alt="item.productTitle"
                   class="w-20 h-20 rounded-md object-cover"
                 />

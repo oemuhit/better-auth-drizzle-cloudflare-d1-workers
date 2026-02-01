@@ -26,9 +26,12 @@ export default defineNuxtConfig({
       deployConfig: true,
       nodeCompat: true,
     },
+    runtimeConfig: {
+      bodySizeLimit: '10mb'
+    }
   },
 
-  modules: ["nitro-cloudflare-dev", "shadcn-nuxt"],
+  modules: ["nitro-cloudflare-dev", "shadcn-nuxt", "@nuxt/image", "@nuxt/icon"],
 
   shadcn: {
     /**
@@ -57,6 +60,41 @@ export default defineNuxtConfig({
     { path: "~/components/base", pathPrefix: false },
     { path: "~/components/forms", pathPrefix: false },
   ],
+
+  image: {
+    providers: {
+      r2: {
+        name: 'r2',
+        provider: '~/providers/r2.ts',
+        options: {
+          baseURL: '/images'
+        }
+      }
+    },
+    provider: 'r2',
+    presets: {
+      avatar: {
+        modifiers: {
+          width: 160
+        }
+      },
+      thumbnail: {
+        modifiers: {
+          width: 256
+        }
+      },
+      medium: {
+        modifiers: {
+          width: 512
+        }
+      },
+      large: {
+        modifiers: {
+          width: 1024
+        }
+      }
+    }
+  },
 
   vite: {
     plugins: [tailwindcss()],

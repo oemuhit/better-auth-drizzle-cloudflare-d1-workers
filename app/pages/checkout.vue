@@ -345,7 +345,7 @@ function getAddressDisplay(address: any) {
               >
                 <img
                   :src="
-                    item.product.images?.[0]?.url || '/placeholder-product.jpg'
+                    item.product.images?.[0]?.url || '/placeholder-product.avif'
                   "
                   :alt="item.product.title"
                   class="w-12 h-12 rounded object-cover"

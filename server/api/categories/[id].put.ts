@@ -35,6 +35,7 @@ export default defineEventHandler(async (event) => {
     if (body.parentCategoryId !== undefined)
       updateData.parentCategoryId = body.parentCategoryId;
     if (body.isActive !== undefined) updateData.isActive = body.isActive;
+    if (body.image !== undefined) updateData.image = body.image;
     if (body.sort !== undefined) updateData.sort = body.sort;
 
     const [updated] = await db

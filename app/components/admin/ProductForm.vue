@@ -88,7 +88,6 @@ interface ProductFormData {
   slug: string;
   description: string;
   shortDescription: string;
-  thumbnail: string;
   status: string;
   categoryId: string;
   taxRateId: string;
@@ -128,7 +127,6 @@ const formData = reactive<ProductFormData>({
   slug: props.product?.slug || "",
   description: props.product?.description || "",
   shortDescription: (props.product as any)?.shortDescription || "",
-  thumbnail: props.product?.thumbnail || "",
   status: props.product?.status || "draft",
   categoryId: props.product?.categoryId || "none",
   taxRateId: (props.product as any)?.taxRateId || "none",
@@ -183,7 +181,6 @@ const [description] = defineField("description");
 const [shortDescription] = defineField("shortDescription");
 const [categoryId] = defineField("categoryId");
 const [taxRateId] = defineField("taxRateId");
-const [thumbnail] = defineField("thumbnail");
 
 const serverError = ref<string | null>(null);
 
@@ -263,6 +260,7 @@ function removeAttribute(attrName: string) {
 const newOptionValue = ref("");
 const newOptionLabel = ref("");
 const newOptionColorCode = ref("#000000");
+const newOptionImage = ref<string | null>(null);
 
 function addOptionToAttribute(attrName: string) {
   const attr = formData.variantAttributes[attrName];
@@ -276,12 +274,17 @@ function addOptionToAttribute(attrName: string) {
   if (attr.type === "color") {
     option.colorCode = newOptionColorCode.value;
   }
+  
+  if (newOptionImage.value) {
+    option.image = newOptionImage.value;
+  }
 
   attr.options.push(option);
 
   newOptionValue.value = "";
   newOptionLabel.value = "";
   newOptionColorCode.value = "#000000";
+  newOptionImage.value = null;
 }
 
 function removeOptionFromAttribute(attrName: string, optionValue: string) {
@@ -412,11 +415,8 @@ defineExpose({
 });
 
 // Gallery Management
-const newImageUrl = ref("");
-function addGalleryImage() {
-  if (!newImageUrl.value) return;
-  formData.images.push({ url: newImageUrl.value, alt: "" });
-  newImageUrl.value = "";
+function handleUploadComplete(imageId: string) {
+  formData.images.push({ url: imageId, alt: "" });
 }
 
 function removeGalleryImage(index: number) {
@@ -588,27 +588,6 @@ const weightUnits = [
           </p>
         </div>
 
-        <div class="space-y-2">
-          <Label for="thumbnail">Thumbnail URL</Label>
-          <div class="flex gap-2">
-            <Input
-              id="thumbnail"
-              v-model="thumbnail"
-              placeholder="https://..."
-              class="flex-1"
-              :class="{ 'border-destructive': errors.thumbnail }"
-            />
-            <div
-              v-if="thumbnail"
-              class="w-10 h-10 rounded border overflow-hidden shrink-0"
-            >
-              <img :src="thumbnail" class="w-full h-full object-cover" />
-            </div>
-          </div>
-          <p v-if="errors.thumbnail" class="text-xs text-destructive">
-            {{ errors.thumbnail }}
-          </p>
-        </div>
       </CardContent>
     </Card>
 
@@ -622,12 +601,12 @@ const weightUnits = [
         >
       </CardHeader>
       <CardContent class="space-y-4">
-        <div class="flex gap-2">
-          <Input v-model="newImageUrl" placeholder="Resim URL (https://...)" />
-          <Button type="button" variant="outline" @click="addGalleryImage">
-            <Plus class="h-4 w-4 mr-2" />
-            Ekle
-          </Button>
+        <div class="max-w-xl border rounded-xl p-4 bg-muted/50">
+          <FileUpload @onUploadComplete="handleUploadComplete">
+            <template #default="{ files }">
+              <FileUploadGrid :files="files" />
+            </template>
+          </FileUpload>
         </div>
 
         <div v-if="formData.images.length > 0" class="grid grid-cols-4 gap-4">
@@ -636,7 +615,11 @@ const weightUnits = [
             :key="index"
             class="relative group aspect-square rounded-lg overflow-hidden border bg-muted"
           >
-            <img :src="img.url" class="w-full h-full object-cover" />
+            <NuxtImg 
+              :src="img.url" 
+              preset="thumbnail"
+              class="w-full h-full object-cover" 
+            />
             <div
               class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
             >
@@ -883,6 +866,12 @@ const weightUnits = [
                     class="w-3 h-3 rounded-full mr-1 border"
                     :style="{ backgroundColor: opt.colorCode }"
                   />
+                  <NuxtImg
+                    v-if="opt.image"
+                    :src="opt.image"
+                    preset="avatar"
+                    class="w-3 h-3 rounded-full mr-1 border"
+                  />
                   {{ opt.label }}
                 </Badge>
               </div>
@@ -909,9 +898,27 @@ const weightUnits = [
                     type="color"
                     class="h-10"
                   />
+                  <div class="flex flex-col gap-2">
+                    <div v-if="newOptionImage" class="relative w-max group">
+                      <NuxtImg
+                        :src="newOptionImage"
+                        preset="avatar"
+                        class="h-10 w-10 rounded border object-cover"
+                      />
+                      <button
+                        type="button"
+                        class="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        @click="newOptionImage = null"
+                      >
+                        <Trash2 class="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                    <FileUpload @onUploadComplete="(id) => newOptionImage = id" />
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
+                    class="h-10"
                     @click="addOptionToAttribute(attrName)"
                   >
                     Seçenek Ekle
@@ -933,6 +940,12 @@ const weightUnits = [
                       "
                       class="w-3 h-3 rounded-full mr-1 border"
                       :style="{ backgroundColor: opt.colorCode }"
+                    />
+                    <NuxtImg
+                      v-if="opt.image"
+                      :src="opt.image"
+                      preset="avatar"
+                      class="w-3 h-3 rounded-full mr-1 border"
                     />
                     {{ opt.label }}
                     <span class="ml-1 text-muted-foreground">&times;</span>
@@ -1005,15 +1018,16 @@ const weightUnits = [
             }"
           >
             <div class="space-y-1">
-              <Label class="sm:hidden text-xs">z</Label>
+              <Label class="sm:hidden text-xs">Resim</Label>
               <Popover>
                 <PopoverTrigger as-child>
                   <div
                     class="h-9 w-9 rounded-md border bg-muted cursor-pointer overflow-hidden flex items-center justify-center relative group"
                   >
-                    <img
+                    <NuxtImg
                       v-if="variant.image"
                       :src="variant.image"
+                      preset="avatar"
                       class="h-full w-full object-cover"
                     />
                     <div
@@ -1032,15 +1046,14 @@ const weightUnits = [
                 <PopoverContent class="w-80">
                   <div class="space-y-4">
                     <div class="text-sm font-medium">Varyant Resmi</div>
+                    
                     <div class="space-y-2">
-                      <Label class="text-xs">URL Girin</Label>
-                      <Input
-                        :model-value="variant.image || ''"
-                        @update:model-value="variant.image = ($event as string) || null"
-                        placeholder="https://..."
-                        class="h-8 text-xs"
-                      />
+                      <Label class="text-xs">Yeni Resim Yükle</Label>
+                      <div class="border rounded-md p-2 bg-muted/50">
+                        <FileUpload @onUploadComplete="(id) => variant.image = id" />
+                      </div>
                     </div>
+
                     <div v-if="formData.images.length > 0" class="space-y-2">
                       <Label class="text-xs">Galeriden Seç</Label>
                       <div class="grid grid-cols-5 gap-2">
@@ -1053,8 +1066,9 @@ const weightUnits = [
                           }"
                           @click="variant.image = img.url"
                         >
-                          <img
+                          <NuxtImg
                             :src="img.url"
+                            preset="avatar"
                             class="h-full w-full object-cover"
                           />
                         </div>
@@ -1065,7 +1079,7 @@ const weightUnits = [
                       type="button"
                       variant="outline"
                       size="sm"
-                      class="w-full text-xs h-8"
+                      class="w-full text-xs h-8 text-destructive"
                       @click="variant.image = null"
                     >
                       Resmi Kaldır

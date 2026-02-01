@@ -51,11 +51,20 @@ function formatPrice(price: number) {
 // Table columns
 const columns: ColumnDef<any>[] = [
   {
-    accessorKey: "thumbnail",
+    accessorKey: "images",
     header: "",
     cell: ({ row }) => {
+      const firstImage = row.original.images?.[0]?.url;
+      if (firstImage) {
+        return h(resolveComponent("NuxtImg"), {
+          src: firstImage,
+          preset: "avatar",
+          alt: row.original.title,
+          class: "w-10 h-10 rounded object-cover",
+        });
+      }
       return h("img", {
-        src: row.original.thumbnail || "/placeholder-product.jpg",
+        src: "/placeholder-product.avif",
         alt: row.original.title,
         class: "w-10 h-10 rounded object-cover",
       });

@@ -5,6 +5,7 @@ interface WishlistProduct {
   thumbnail: string | null;
   price: number;
   status: string;
+  images?: { url: string; alt: string | null }[];
 }
 
 interface WishlistItem {

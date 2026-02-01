@@ -41,10 +41,10 @@ const imageUrl = computed(() => {
   if (props.item.productVariant?.image) {
     return props.item.productVariant.image;
   }
-  if (props.item.product.images && props.item.product.images.length > 0) {
+  if (props.item.product?.images && props.item.product.images.length > 0) {
     return props.item.product.images[0].url;
   }
-  return props.item.product.thumbnail || "/placeholder-product.jpg";
+  return props.item.product?.thumbnail || "/placeholder-product.avif";
 });
 
 // Get variant info
@@ -65,8 +65,9 @@ const variantInfo = computed(() => {
         class="rounded-lg overflow-hidden bg-muted"
         :class="[compact ? 'w-16 h-16' : 'w-24 h-24']"
       >
-        <img
+        <NuxtImg
           :src="imageUrl"
+          preset="thumbnail"
           :alt="item.product.title"
           class="w-full h-full object-cover"
         />

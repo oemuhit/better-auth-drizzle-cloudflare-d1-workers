@@ -22,6 +22,7 @@ const formData = reactive({
   slug: "",
   parentCategoryId: "none",
   isActive: true,
+  image: null as string | null,
 });
 
 const isSubmitting = ref(false);
@@ -125,6 +126,29 @@ async function handleSubmit() {
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          
+          <div class="space-y-2">
+            <Label>Kategori Resmi</Label>
+            <div class="flex items-center gap-4">
+              <div v-if="formData.image" class="relative group">
+                <NuxtImg
+                  :src="formData.image"
+                  preset="avatar"
+                  class="h-20 w-20 rounded-lg border object-cover"
+                />
+                <button
+                  type="button"
+                  class="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click="formData.image = null"
+                >
+                  <Trash2 class="h-3 w-3" />
+                </button>
+              </div>
+              <div class="flex-1 max-w-xs">
+                <FileUpload @onUploadComplete="(id) => formData.image = id" />
+              </div>
+            </div>
           </div>
 
           <div class="flex items-center gap-2">

@@ -107,8 +107,9 @@ async function handleClearAll() {
         <!-- Image -->
         <NuxtLink :to="`/shop/${item.product.slug}`">
           <div class="aspect-square overflow-hidden bg-muted">
-            <img
-              :src="item.product.thumbnail || '/placeholder-product.jpg'"
+            <NuxtImg
+              :src="item.product.images?.[0]?.url || item.product.thumbnail || '/placeholder-product.avif'"
+              preset="thumbnail"
               :alt="item.product.title"
               class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />

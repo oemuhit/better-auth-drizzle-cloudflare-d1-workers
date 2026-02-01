@@ -90,7 +90,7 @@ const imageUrl = computed(() => {
   if (firstImage) {
     return firstImage.url;
   }
-  return props.product.thumbnail || "/placeholder-product.jpg";
+  return props.product.thumbnail || "/placeholder-product.avif";
 });
 
 // Hover image (second image if exists)
@@ -130,16 +130,18 @@ const reviewCount = computed(() => Math.floor(Math.random() * 10));
       class="block relative aspect-square overflow-hidden rounded-xl bg-muted"
     >
       <!-- Main Image -->
-      <img
+      <NuxtImg
         :src="imageUrl"
+        preset="thumbnail"
         :alt="product.title"
         class="w-full h-full object-cover transition-all duration-500"
         :class="{ 'group-hover:opacity-0': hoverImageUrl }"
       />
       <!-- Hover Image -->
-      <img
+      <NuxtImg
         v-if="hoverImageUrl"
         :src="hoverImageUrl"
+        preset="thumbnail"
         :alt="product.title"
         class="absolute inset-0 w-full h-full object-cover opacity-0 transition-all duration-500 group-hover:opacity-100"
       />

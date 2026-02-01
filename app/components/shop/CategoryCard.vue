@@ -35,12 +35,13 @@ const categoryImages: Record<string, string> = {
     :to="`/shop/category/${slug}`"
     class="group relative block aspect-square overflow-hidden rounded-2xl bg-muted"
   >
-    <img
+    <NuxtImg
       :src="
         imageUrl ||
         categoryImages[slug] ||
         'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400'
       "
+      preset="thumbnail"
       :alt="title"
       class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
     />

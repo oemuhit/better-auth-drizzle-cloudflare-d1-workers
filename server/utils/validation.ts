@@ -64,7 +64,7 @@ export const productSchema = z.object({
 export const createProductRequestSchema = productSchema.extend({
     variants: z.array(productVariantSchema).optional(),
     images: z.array(z.object({
-        url: z.string().url("Geçerli bir URL giriniz"),
+        url: z.string(),
         alt: z.string().optional().nullable()
     })).optional()
 });

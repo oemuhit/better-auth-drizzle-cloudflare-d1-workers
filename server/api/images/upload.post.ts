@@ -1,0 +1,60 @@
+export default defineEventHandler(async (event) => {
+    const contentType = getRequestHeader(event, 'content-type');
+    const contentLength = getRequestHeader(event, 'content-length');
+    console.log(`[Upload] Request received. Content-Type: ${contentType}, Content-Length: ${contentLength}`);
+
+    try {
+        const cloudflare = event.context.cloudflare;
+        if (!cloudflare?.env?.BUCKET) {
+            console.error('[Upload] BUCKET binding missing. Available env keys:', cloudflare?.env ? Object.keys(cloudflare.env) : 'None');
+            return { success: false, error: 'BUCKET binding missing' };
+        }
+
+        console.log('[Upload] Parsing multipart data...');
+        const formData = await readMultipartFormData(event);
+
+        if (!formData || formData.length === 0) {
+            console.warn('[Upload] No files found in multipart data');
+            return { success: false, error: 'No files in request. Ensure you are sending FormData.' };
+        }
+
+        const imageId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+
+        const uploadedFiles: string[] = [];
+
+        for (const part of formData) {
+            if (!part.data || part.data.length === 0) continue;
+
+            const name = part.name || 'file';
+            const key = `${imageId}_${name}.webp`;
+
+            console.log(`[Upload] Sending ${key} to R2 (${part.data.length} bytes)`);
+
+            // Convert to Uint8Array for safety
+            const data = new Uint8Array(part.data);
+
+            await cloudflare.env.BUCKET.put(key, data, {
+                httpMetadata: {
+                    contentType: part.type || 'image/webp',
+                }
+            });
+            uploadedFiles.push(key);
+        }
+
+        console.log(`[Upload] Success: ${imageId}`);
+        return {
+            success: true,
+            imageId,
+            files: uploadedFiles
+        };
+    } catch (err: any) {
+        console.error('[Upload] Fatal Error:', err);
+        return {
+            success: false,
+            error: err.message || 'Internal Server Error',
+            details: String(err)
+        };
+    }
+});

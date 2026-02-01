@@ -85,7 +85,7 @@ const images = computed(() => {
 
   return imgs.length > 0
     ? imgs
-    : [{ url: "/placeholder-product.jpg", alt: "Placeholder" }];
+    : [{ url: "/placeholder-product.avif", alt: "Placeholder" }];
 });
 
 // Switch image when variant changes
@@ -154,10 +154,11 @@ const reviewCount = 12;
           <div
             class="aspect-square rounded-2xl overflow-hidden bg-muted relative group"
           >
-            <img
+            <NuxtImg
               v-if="mainImage"
               :src="mainImage.url"
               :alt="mainImage.alt || (product?.title ?? '')"
+              preset="large"
               class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
             <!-- Wishlist Button -->
@@ -185,8 +186,9 @@ const reviewCount = 12;
               ]"
               @click="currentImageIndex = index"
             >
-              <img
+              <NuxtImg
                 :src="image.url"
+                preset="thumbnail"
                 :alt="image.alt || ''"
                 class="w-full h-full object-cover"
               />

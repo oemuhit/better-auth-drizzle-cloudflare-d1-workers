@@ -29,6 +29,7 @@ export default defineEventHandler(async (event) => {
         slug,
         parentCategoryId: body.parentCategoryId || null,
         isActive: body.isActive ?? true,
+        image: body.image || null,
         sort: body.sort ?? 0,
       })
       .returning();

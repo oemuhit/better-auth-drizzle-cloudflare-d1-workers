@@ -74,6 +74,7 @@ async function handleSaveEdit() {
         title: editingCategory.value.title,
         slug: editingCategory.value.slug,
         isActive: editingCategory.value.isActive,
+        image: editingCategory.value.image,
       },
     });
     await refresh();
@@ -86,6 +87,24 @@ async function handleSaveEdit() {
 
 // Table columns
 const columns: ColumnDef<any>[] = [
+  {
+    accessorKey: "image",
+    header: "",
+    cell: ({ row }) => {
+      const image = row.original.image;
+      if (image) {
+        return h(resolveComponent("NuxtImg"), {
+          src: image,
+          preset: "avatar",
+          class: "w-10 h-10 rounded object-cover",
+        });
+      }
+      return h("div", { class: "w-10 h-10 rounded bg-muted flex items-center justify-center" }, [
+        h("span", { class: "text-[10px] text-muted-foreground" }, "Resim Yok")
+      ]);
+    },
+    enableSorting: false,
+  },
   {
     accessorKey: "title",
     header: "Kategori Adı",
@@ -204,6 +223,29 @@ const columns: ColumnDef<any>[] = [
               class="h-4 w-4"
             />
             <label for="is-active">Aktif</label>
+          </div>
+
+          <div class="space-y-2">
+            <Label>Kategori Resmi</Label>
+            <div class="flex items-center gap-4">
+              <div v-if="editingCategory.image" class="relative group">
+                <NuxtImg
+                  :src="editingCategory.image"
+                  preset="avatar"
+                  class="h-16 w-16 rounded-lg border object-cover"
+                />
+                <button
+                  type="button"
+                  class="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click="editingCategory.image = null"
+                >
+                  <Trash2 class="h-3 w-3" />
+                </button>
+              </div>
+              <div class="flex-1">
+                <FileUpload @onUploadComplete="(id) => editingCategory.image = id" />
+              </div>
+            </div>
           </div>
         </div>
         <DialogFooter>

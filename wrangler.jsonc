@@ -32,7 +32,13 @@
       "remote": true,
     },
   ],
-
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "nuxt-images",
+      "remote": true
+    }
+  ],
   /**
    * Smart Placement
    * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

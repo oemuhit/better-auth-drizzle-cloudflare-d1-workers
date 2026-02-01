@@ -306,7 +306,7 @@ const mockProducts = [
 async function seed() {
   // Connect to local D1 database file
   const client = createClient({
-    url: "file:.wrangler/state/v3/d1/miniflare-D1DatabaseObject/ce88994447b09e6894fda71b55e0f87afbca2f3391c79fdcca0f5882d35dabd4.sqlite",
+    url: "file:.wrangler/state/v3/d1/miniflare-D1DatabaseObject/800800f8c9e84d8582fd4935e07bb4ba.sqlite",
   });
 
   const db = drizzleSqlite(client, { schema });

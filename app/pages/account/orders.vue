@@ -76,10 +76,11 @@ function formatDate(date: number | Date) {
               <div class="flex items-center gap-4">
                 <!-- First 3 product images -->
                 <div class="flex -space-x-2">
-                  <img
+                  <NuxtImg
                     v-for="(item, index) in order.items.slice(0, 3)"
                     :key="item.id"
-                    :src="item.product?.thumbnail || '/placeholder-product.jpg'"
+                    :src="item.product?.images?.[0]?.url || item.product?.thumbnail || '/placeholder-product.avif'"
+                    preset="avatar"
                     :alt="item.productTitle"
                     class="w-10 h-10 rounded-full border-2 border-background object-cover bg-muted"
                     :style="{ zIndex: 3 - index }"

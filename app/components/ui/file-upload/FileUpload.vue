@@ -2,6 +2,7 @@
 import type { HTMLAttributes } from "vue";
 import { Motion } from "motion-v";
 import { ref } from "vue";
+import imageCompression from "browser-image-compression";
 
 interface FileUploadProps {
   class?: HTMLAttributes["class"];
@@ -11,15 +12,78 @@ defineProps<FileUploadProps>();
 
 const emit = defineEmits<{
   (e: "onChange", files: File[]): void;
+  (e: "onUploadComplete", imageId: string): void;
 }>();
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const files = ref<File[]>([]);
 const isActive = ref<boolean>(false);
+const isUploading = ref<boolean>(false);
 
-function handleFileChange(newFiles: File[]) {
+const targetWidths = [160, 256, 512, 800, 1024];
+
+async function handleFileChange(newFiles: File[]) {
   files.value = [...files.value, ...newFiles];
   emit("onChange", files.value);
+  
+  if (newFiles.length > 0) {
+    await uploadImages(newFiles);
+  }
+}
+
+async function uploadImages(filesToUpload: File[]) {
+  console.log('Starting upload for', filesToUpload.length, 'files');
+  isUploading.value = true;
+  try {
+    for (const file of filesToUpload) {
+      if (!file.type.startsWith('image/')) {
+        console.warn('Skipping non-image file:', file.name);
+        continue;
+      }
+
+      console.log('Processing file:', file.name);
+      const formData = new FormData();
+      formData.append('original', file, file.name);
+
+      // Resized versions
+      await Promise.all(targetWidths.map(async (width) => {
+        const options = {
+          maxWidthOrHeight: width,
+          useWebWorker: true,
+          fileType: 'image/webp',
+          initialQuality: 0.8
+        };
+        try {
+          console.log(`Compressing ${file.name} to ${width}w...`);
+          const compressedFile = await imageCompression(file, options);
+          // Ensure it has a filename so the backend doesn't skip it
+          const blobWithFileName = new File([compressedFile], `${width}w.webp`, { type: 'image/webp' });
+          formData.append(`${width}w`, blobWithFileName);
+        } catch (error) {
+          console.error(`Compression error for width ${width}:`, error);
+        }
+      }));
+
+      console.log('Sending to API...');
+      const response = await $fetch('/api/images/upload', {
+        method: 'POST',
+        body: formData
+      }) as any;
+
+      console.log('API Response:', response);
+      if (response?.success) {
+        emit('onUploadComplete', response.imageId);
+      } else {
+        throw new Error(response?.statusMessage || 'Upload failed');
+      }
+    }
+  } catch (err: any) {
+    console.error('Upload Error:', err);
+    alert('Yükleme hatası: ' + (err.message || 'Bilinmeyen hata'));
+  } finally {
+    isUploading.value = false;
+    console.log('Upload process finished');
+  }
 }
 
 function onFileChange(e: Event) {
@@ -64,14 +128,19 @@ function handleDrop(e: DragEvent) {
           ref="fileInputRef"
           type="file"
           class="hidden"
+          accept="image/*"
           @change="onFileChange"
         />
+        
+        <div v-if="isUploading" class="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-sm dark:bg-black/50">
+           <Icon name="heroicons:arrow-path" class="h-10 w-10 animate-spin text-primary" />
+        </div>
 
         <!-- Grid pattern -->
         <div
           class="pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]"
         >
-          <slot />
+          <slot :files="files" />
         </div>
 
         <!-- Content -->
