@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Heart, User, Search, Menu, X, ChevronDown } from "lucide-vue-next";
+import { Heart, User, Search, Menu, X, ChevronDown, Package, LayoutDashboard, LogOut } from "lucide-vue-next";
 import { authClient } from "~/lib/auth-client";
 
 const { itemCount: wishlistCount } = useWishlist();
@@ -100,7 +100,7 @@ async function handleLogout() {
           </Button>
 
           <!-- Wishlist -->
-          <NuxtLink to="/wishlist">
+          <NuxtLink to="/account/wishlist">
             <Button variant="ghost" size="icon" class="relative">
               <Heart class="h-5 w-5" />
               <span
@@ -129,17 +129,30 @@ async function handleLogout() {
                 }}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <NuxtLink to="/orders">Siparişlerim</NuxtLink>
+                  <NuxtLink to="/account/profile" class="flex items-center gap-2">
+                    <User class="h-4 w-4" />
+                    <span>Hesabım</span>
+                  </NuxtLink>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <NuxtLink to="/admin">Admin Panel</NuxtLink>
+                  <NuxtLink to="/account/orders" class="flex items-center gap-2">
+                    <Package class="h-4 w-4" />
+                    <span>Siparişlerim</span>
+                  </NuxtLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <NuxtLink to="/admin" class="flex items-center gap-2">
+                    <LayoutDashboard class="h-4 w-4" />
+                    <span>Admin Panel</span>
+                  </NuxtLink>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   @click="handleLogout"
-                  class="text-destructive"
+                  class="text-destructive flex items-center gap-2"
                 >
-                  Çıkış Yap
+                  <LogOut class="h-4 w-4" />
+                  <span>Çıkış Yap</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -227,17 +240,35 @@ async function handleLogout() {
 
           <div v-if="session" class="pt-2 space-y-2">
             <NuxtLink
-              to="/orders"
-              class="block py-2 text-foreground"
+              to="/account/profile"
+              class="flex items-center gap-2 py-2 text-foreground"
               @click="mobileMenuOpen = false"
             >
-              Siparişlerim
+              <User class="h-5 w-5" />
+              <span>Hesabım</span>
+            </NuxtLink>
+            <NuxtLink
+              to="/account/orders"
+              class="flex items-center gap-2 py-2 text-foreground"
+              @click="mobileMenuOpen = false"
+            >
+              <Package class="h-5 w-5" />
+              <span>Siparişlerim</span>
+            </NuxtLink>
+            <NuxtLink
+              to="/admin"
+              class="flex items-center gap-2 py-2 text-foreground"
+              @click="mobileMenuOpen = false"
+            >
+              <LayoutDashboard class="h-5 w-5" />
+              <span>Admin Panel</span>
             </NuxtLink>
             <button
               @click="handleLogout"
-              class="block py-2 text-destructive w-full text-left"
+              class="flex items-center gap-2 py-2 text-destructive w-full text-left font-medium"
             >
-              Çıkış Yap
+              <LogOut class="h-5 w-5" />
+              <span>Çıkış Yap</span>
             </button>
           </div>
           <NuxtLink

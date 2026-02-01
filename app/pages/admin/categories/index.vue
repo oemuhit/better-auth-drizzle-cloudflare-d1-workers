@@ -32,15 +32,26 @@ const flatCategories = computed(() => {
   return result;
 });
 
+const confirmDeleteId = ref<string | null>(null);
+const isDeleteDialogOpen = ref(false);
+
+function openDeleteDialog(id: string) {
+  confirmDeleteId.value = id;
+  isDeleteDialogOpen.value = true;
+}
+
 // Delete category
-async function handleDelete(id: string) {
-  if (!confirm("Bu kategoriyi silmek istediğinizden emin misiniz?")) return;
+async function handleDelete() {
+  if (!confirmDeleteId.value) return;
 
   try {
-    await $fetch(`/api/categories/${id}`, { method: "DELETE" });
+    await $fetch(`/api/categories/${confirmDeleteId.value}`, { method: "DELETE" });
     await refresh();
   } catch (error: any) {
     alert(error.data?.statusMessage || "Kategori silinemedi");
+  } finally {
+    isDeleteDialogOpen.value = false;
+    confirmDeleteId.value = null;
   }
 }
 
@@ -132,7 +143,7 @@ const columns: ColumnDef<any>[] = [
             variant: "ghost",
             size: "icon",
             class: "h-8 w-8 text-destructive",
-            onClick: () => handleDelete(row.original.id),
+            onClick: () => openDeleteDialog(row.original.id),
           },
           () => h(Trash2, { class: "h-4 w-4" }),
         ),
@@ -203,5 +214,23 @@ const columns: ColumnDef<any>[] = [
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog :open="isDeleteDialogOpen" @update:open="isDeleteDialogOpen = $event">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Kategoriyi silmek istediğinize emin misiniz?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Bu işlem geri alınamaz. Bu kategoriyi ve varsa alt kategorilerini kalıcı olarak silecektir.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="isDeleteDialogOpen = false">İptal</AlertDialogCancel>
+          <AlertDialogAction @click="handleDelete" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Sil
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

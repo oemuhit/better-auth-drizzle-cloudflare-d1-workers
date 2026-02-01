@@ -2,12 +2,12 @@
 import { Package, ChevronRight } from "lucide-vue-next";
 
 definePageMeta({
-  layout: "default",
+  layout: "account",
   middleware: "auth",
 });
 
 useHead({
-  title: "Siparişlerim",
+  title: "Siparişlerim | Hesabım",
 });
 
 const { data: ordersData, pending } = await useFetch("/api/orders");
@@ -32,24 +32,23 @@ function formatDate(date: number | Date) {
 </script>
 
 <template>
-  <div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-8">Siparişlerim</h1>
+  <div class="space-y-6">
+    <div>
+      <h1 class="text-3xl font-bold">Siparişlerim</h1>
+      <p class="text-muted-foreground">Geçmiş ve aktif siparişlerinizi takip edin</p>
+    </div>
 
     <!-- Loading -->
     <div v-if="pending" class="flex justify-center py-12">
-      <div
-        class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"
-      />
+      <Loader2 class="h-8 w-8 animate-spin text-primary" />
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="orders.length === 0" class="text-center py-16">
-      <Package class="h-24 w-24 text-muted-foreground mx-auto mb-6" />
-      <h2 class="text-2xl font-semibold mb-2">Henüz siparişiniz yok</h2>
-      <p class="text-muted-foreground mb-6">
-        Alışverişe başlayarak ilk siparişinizi oluşturun
-      </p>
-      <Button size="lg">
+    <div v-else-if="orders.length === 0" class="text-center py-16 border-2 border-dashed rounded-xl">
+      <Package class="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+      <h2 class="text-xl font-semibold mb-2">Henüz siparişiniz yok</h2>
+      <p class="text-muted-foreground mb-6">Alışverişe başlayarak ilk siparişinizi oluşturun</p>
+      <Button asChild>
         <NuxtLink to="/shop">Alışverişe Başla</NuxtLink>
       </Button>
     </div>
@@ -59,22 +58,20 @@ function formatDate(date: number | Date) {
       <Card
         v-for="order in orders"
         :key="order.id"
-        class="hover:shadow-md transition-shadow"
+        class="hover:shadow-md transition-shadow overflow-hidden"
       >
         <NuxtLink :to="`/orders/${order.id}`" class="block">
-          <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardHeader class="flex flex-row items-center justify-between pb-2 bg-muted/30">
             <div>
               <CardTitle class="text-lg">{{ order.orderNumber }}</CardTitle>
-              <CardDescription>{{
-                formatDate(order.createdAt)
-              }}</CardDescription>
+              <CardDescription>{{ formatDate(order.createdAt as any) }}</CardDescription>
             </div>
             <div class="flex items-center gap-2">
               <OrderStatusBadge :status="order.status" />
               <ChevronRight class="h-5 w-5 text-muted-foreground" />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent class="pt-6">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-4">
                 <!-- First 3 product images -->
@@ -84,7 +81,7 @@ function formatDate(date: number | Date) {
                     :key="item.id"
                     :src="item.product?.thumbnail || '/placeholder-product.jpg'"
                     :alt="item.productTitle"
-                    class="w-10 h-10 rounded-full border-2 border-background object-cover"
+                    class="w-10 h-10 rounded-full border-2 border-background object-cover bg-muted"
                     :style="{ zIndex: 3 - index }"
                   />
                   <div
@@ -99,15 +96,12 @@ function formatDate(date: number | Date) {
                 </span>
               </div>
               <div class="text-right">
-                <p class="font-semibold">{{ formatPrice(order.total) }}</p>
-                <div class="flex gap-2 mt-1">
+                <p class="font-bold text-lg">{{ formatPrice(order.total) }}</p>
+                <div class="flex gap-1 mt-1 justify-end">
                   <OrderStatusBadge
                     :status="order.paymentStatus"
                     type="payment"
-                  />
-                  <OrderStatusBadge
-                    :status="order.fulfillmentStatus"
-                    type="fulfillment"
+                    size="sm"
                   />
                 </div>
               </div>

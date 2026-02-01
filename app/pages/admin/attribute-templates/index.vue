@@ -36,6 +36,14 @@ const showDialog = ref(false);
 const editingTemplate = ref<AttributeTemplate | null>(null);
 const isSubmitting = ref(false);
 
+const confirmDeleteData = ref<AttributeTemplate | null>(null);
+const isDeleteDialogOpen = ref(false);
+
+function openDeleteDialog(template: AttributeTemplate) {
+  confirmDeleteData.value = template;
+  isDeleteDialogOpen.value = true;
+}
+
 // Form state
 const formData = reactive({
   name: "",
@@ -158,20 +166,19 @@ async function handleSubmit() {
   }
 }
 
-async function handleDelete(template: AttributeTemplate) {
-  if (
-    !confirm(`"${template.label}" şablonunu silmek istediğinize emin misiniz?`)
-  ) {
-    return;
-  }
+async function handleDelete() {
+  if (!confirmDeleteData.value) return;
 
   try {
-    await $fetch(`/api/attribute-templates/${template.id}`, {
+    await $fetch(`/api/attribute-templates/${confirmDeleteData.value.id}`, {
       method: "DELETE",
     });
     await refresh();
   } catch (error: any) {
     alert(error.data?.statusMessage || "Silme işlemi başarısız");
+  } finally {
+    isDeleteDialogOpen.value = false;
+    confirmDeleteData.value = null;
   }
 }
 
@@ -264,7 +271,7 @@ async function toggleActive(template: AttributeTemplate) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   class="text-destructive"
-                  @click="handleDelete(template)"
+                  @click="openDeleteDialog(template)"
                 >
                   <Trash2 class="h-4 w-4 mr-2" />
                   Sil
@@ -500,5 +507,23 @@ async function toggleActive(template: AttributeTemplate) {
         </form>
       </DialogContent>
     </Dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog :open="isDeleteDialogOpen" @update:open="isDeleteDialogOpen = $event">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Şablonu silmek istediğinize emin misiniz?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Bu işlem geri alınamaz. "{{ confirmDeleteData?.label }}" şablonu kalıcı olarak silinecektir.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="isDeleteDialogOpen = false">İptal</AlertDialogCancel>
+          <AlertDialogAction @click="handleDelete" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Sil
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

@@ -18,15 +18,26 @@ const { data: productsData, refresh } = await useFetch("/api/products", {
 
 const products = computed(() => productsData.value?.data || []);
 
+const confirmDeleteId = ref<string | null>(null);
+const isDeleteDialogOpen = ref(false);
+
+function openDeleteDialog(id: string) {
+  confirmDeleteId.value = id;
+  isDeleteDialogOpen.value = true;
+}
+
 // Delete product
-async function handleDelete(id: string) {
-  if (!confirm("Bu ürünü silmek istediğinizden emin misiniz?")) return;
+async function handleDelete() {
+  if (!confirmDeleteId.value) return;
 
   try {
-    await $fetch(`/api/products/${id}`, { method: "DELETE" });
+    await $fetch(`/api/products/${confirmDeleteId.value}`, { method: "DELETE" });
     await refresh();
   } catch (error: any) {
     alert(error.data?.statusMessage || "Ürün silinemedi");
+  } finally {
+    isDeleteDialogOpen.value = false;
+    confirmDeleteId.value = null;
   }
 }
 
@@ -120,7 +131,7 @@ const columns: ColumnDef<any>[] = [
             variant: "ghost",
             size: "icon",
             class: "h-8 w-8 text-destructive",
-            onClick: () => handleDelete(row.original.id),
+            onClick: () => openDeleteDialog(row.original.id),
           },
           () => h(Trash2, { class: "h-4 w-4" }),
         ),
@@ -157,5 +168,23 @@ const columns: ColumnDef<any>[] = [
         />
       </CardContent>
     </Card>
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog :open="isDeleteDialogOpen" @update:open="isDeleteDialogOpen = $event">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Ürünü silmek istediğinize emin misiniz?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Bu işlem geri alınamaz. Bu ürünü kalıcı olarak silecektir.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="isDeleteDialogOpen = false">İptal</AlertDialogCancel>
+          <AlertDialogAction @click="handleDelete" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Sil
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

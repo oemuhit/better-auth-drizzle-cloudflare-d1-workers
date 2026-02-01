@@ -1,0 +1,75 @@
+import { eq, and } from "drizzle-orm";
+import { useDb } from "../../../utils/db";
+import { serverAuth } from "../../../utils/auth";
+import { customerAddress } from "../../../db/schema";
+import { z } from "zod";
+
+const updateAddressSchema = z.object({
+    firstName: z.string().min(1, "İsim gerekli"),
+    lastName: z.string().min(1, "Soyisim gerekli"),
+    addressLine1: z.string().min(5, "Adres çok kısa"),
+    addressLine2: z.string().optional(),
+    city: z.string().min(2, "Şehir gerekli"),
+    state: z.string().optional(),
+    postalCode: z.string().min(5, "Posta kodu gerekli"),
+    phone: z.string().min(10, "Telefon numarası geçerli değil"),
+    isShipping: z.boolean().optional(),
+    isBilling: z.boolean().optional(),
+    isDefault: z.boolean().optional(),
+});
+
+export default defineEventHandler(async (event) => {
+    const db = useDb(event);
+    const auth = serverAuth(event);
+    const session = await auth.api.getSession({ headers: event.headers });
+    const id = getRouterParam(event, "id");
+
+    if (!session?.user || !id) {
+        throw createError({
+            statusCode: 401,
+            statusMessage: "Geçersiz istek",
+        });
+    }
+
+    const body = await readBody(event);
+    const result = updateAddressSchema.safeParse(body);
+
+    if (!result.success) {
+        throw createError({
+            statusCode: 400,
+            statusMessage: "Geçersiz veri",
+            data: result.error.format(),
+        });
+    }
+
+    const userId = session.user.id;
+
+    // Handle isDefault logic
+    if (result.data.isDefault) {
+        await db
+            .update(customerAddress)
+            .set({ isDefault: false })
+            .where(eq(customerAddress.userId, userId));
+    }
+
+    const [updatedAddress] = await db
+        .update(customerAddress)
+        .set({
+            ...result.data,
+            updatedAt: new Date(),
+        })
+        .where(and(eq(customerAddress.id, id), eq(customerAddress.userId, userId)))
+        .returning();
+
+    if (!updatedAddress) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: "Adres bulunamadı",
+        });
+    }
+
+    return {
+        success: true,
+        data: updatedAddress,
+    };
+});

@@ -20,6 +20,14 @@ const showDialog = ref(false);
 const editingTaxRate = ref<TaxRate | null>(null);
 const isSubmitting = ref(false);
 
+const confirmDeleteData = ref<TaxRate | null>(null);
+const isDeleteDialogOpen = ref(false);
+
+function openDeleteDialog(taxRate: TaxRate) {
+  confirmDeleteData.value = taxRate;
+  isDeleteDialogOpen.value = true;
+}
+
 // Form state
 const formData = reactive({
   title: "",
@@ -77,22 +85,19 @@ async function handleSubmit() {
   }
 }
 
-async function handleDelete(taxRate: TaxRate) {
-  if (
-    !confirm(
-      `"${taxRate.title}" vergi oranını silmek istediğinize emin misiniz?`,
-    )
-  ) {
-    return;
-  }
+async function handleDelete() {
+  if (!confirmDeleteData.value) return;
 
   try {
-    await $fetch(`/api/tax-rates/${taxRate.id}`, {
+    await $fetch(`/api/tax-rates/${confirmDeleteData.value.id}`, {
       method: "DELETE",
     });
     await refresh();
   } catch (error: any) {
     alert(error.data?.statusMessage || "Silme işlemi başarısız");
+  } finally {
+    isDeleteDialogOpen.value = false;
+    confirmDeleteData.value = null;
   }
 }
 
@@ -179,7 +184,7 @@ async function setDefault(taxRate: TaxRate) {
                   variant="ghost"
                   size="icon"
                   class="text-destructive"
-                  @click="handleDelete(taxRate)"
+                  @click="openDeleteDialog(taxRate)"
                 >
                   <Trash2 class="h-4 w-4" />
                 </Button>
@@ -267,5 +272,23 @@ async function setDefault(taxRate: TaxRate) {
         </form>
       </DialogContent>
     </Dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog :open="isDeleteDialogOpen" @update:open="isDeleteDialogOpen = $event">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Vergi oranını silmek istediğinize emin misiniz?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Bu işlem geri alınamaz. "{{ confirmDeleteData?.title }}" vergi oranı kalıcı olarak silinecektir.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="isDeleteDialogOpen = false">İptal</AlertDialogCancel>
+          <AlertDialogAction @click="handleDelete" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Sil
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
