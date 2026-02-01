@@ -2,7 +2,8 @@
 import type { HTMLAttributes } from "vue";
 import { Motion } from "motion-v";
 import { ref } from "vue";
-import imageCompression from "browser-image-compression";
+import resize from "@jsquash/resize";
+import { encode as encodeWebP } from "@jsquash/webp";
 
 interface FileUploadProps {
   class?: HTMLAttributes["class"];
@@ -45,22 +46,36 @@ async function uploadImages(filesToUpload: File[]) {
       const formData = new FormData();
       formData.append('original', file, file.name);
 
-      // Resized versions
+      // Create ImageData from the file using canvas
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Could not get canvas context');
+      ctx.drawImage(bitmap, 0, 0);
+      const originalImageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+
+      // Resized versions using jSquash
       await Promise.all(targetWidths.map(async (width) => {
-        const options = {
-          maxWidthOrHeight: width,
-          useWebWorker: true,
-          fileType: 'image/webp',
-          initialQuality: 0.8
-        };
         try {
-          console.log(`Compressing ${file.name} to ${width}w...`);
-          const compressedFile = await imageCompression(file, options);
-          // Ensure it has a filename so the backend doesn't skip it
-          const blobWithFileName = new File([compressedFile], `${width}w.webp`, { type: 'image/webp' });
-          formData.append(`${width}w`, blobWithFileName);
+          console.log(`Processing ${file.name} to ${width}w...`);
+          
+          // Calculate height to maintain aspect ratio
+          const aspectRatio = originalImageData.height / originalImageData.width;
+          const height = Math.round(width * aspectRatio);
+          
+          // Resize using jSquash
+          const resizedImageData = await resize(originalImageData, { width, height });
+          
+          // Encode to WebP using jSquash
+          const webpBuffer = await encodeWebP(resizedImageData, { quality: 80 });
+          
+          // Create File from buffer
+          const compressedFile = new File([webpBuffer], `${width}w.webp`, { type: 'image/webp' });
+          formData.append(`${width}w`, compressedFile);
         } catch (error) {
-          console.error(`Compression error for width ${width}:`, error);
+          console.error(`jSquash error for width ${width}:`, error);
         }
       }));
 

@@ -31,6 +31,10 @@ export default defineNuxtConfig({
     }
   },
 
+  build: {
+    transpile: ["@jsquash/resize", "@jsquash/webp"]
+  },
+
   modules: ["nitro-cloudflare-dev", "shadcn-nuxt", "@nuxt/image", "@nuxt/icon"],
 
   shadcn: {

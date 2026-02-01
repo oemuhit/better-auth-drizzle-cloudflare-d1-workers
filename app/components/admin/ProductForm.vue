@@ -393,24 +393,26 @@ function getAttributeDisplayValue(
 const handleSubmit = handleVeeSubmit(async (values) => {
   isSubmitting.value = true;
   serverError.value = null;
-  try {
-    // Merge variants and images which might have been updated manually in formData
-    const finalData = {
-      ...values,
-      variants: formData.variants,
-      images: formData.images,
-      variantAttributes: formData.variantAttributes,
-    };
-    emit("submit", finalData as any);
-  } finally {
-    isSubmitting.value = false;
-  }
+  // Merge variants and images which might have been updated manually in formData
+  const finalData = {
+    ...values,
+    variants: formData.variants,
+    images: formData.images,
+    variantAttributes: formData.variantAttributes,
+  };
+  emit("submit", finalData as any);
+  // Note: isSubmitting is set to true here and should be set to false by parent
+  // after the async operation completes via setSubmitting() or component reload
 });
 
-// Method to set server errors from parent
+// Method to set server errors and control submitting from parent
 defineExpose({
   setServerError: (error: string) => {
     serverError.value = error;
+    isSubmitting.value = false; // Also stop loading on error
+  },
+  setSubmitting: (value: boolean) => {
+    isSubmitting.value = value;
   },
 });
 
@@ -1209,9 +1211,10 @@ const weightUnits = [
       <Button type="button" variant="outline" @click="emit('cancel')">
         İptal
       </Button>
+
       <Button type="submit" :disabled="isSubmitting || !formData.title">
-        <Loader2 v-if="isSubmitting" class="h-4 w-4 mr-2 animate-spin" />
-        {{ product ? "Güncelle" : "Oluştur" }}
+        <Loader2 v-if="isSubmitting" class="mr-2 h-4 w-4 animate-spin" />
+        {{ product ? 'Güncelle' : 'Oluştur' }}
       </Button>
     </div>
   </form>
