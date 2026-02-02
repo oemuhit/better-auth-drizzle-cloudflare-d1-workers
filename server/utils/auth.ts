@@ -18,6 +18,9 @@ export const serverAuth = (event: any) => {
   }
   const db = drizzle(DB, { schema });
 
+  // Get environment variables for OAuth
+  const env = event.context.cloudflare.env;
+
   return betterAuth({
     trustedOrigins: ["http://localhost:3000"],
     database: drizzleAdapter(db, {
@@ -26,6 +29,11 @@ export const serverAuth = (event: any) => {
     emailAndPassword: {
       enabled: true,
     },
-    // Diğer konfigürasyonlar...
+    socialProviders: {
+      google: {
+        clientId: env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || "",
+        clientSecret: env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || "",
+      },
+    },
   });
 };
