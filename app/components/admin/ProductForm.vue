@@ -511,11 +511,10 @@ const weightUnits = [
 
         <div class="space-y-2">
           <Label for="description">Detaylı Açıklama</Label>
-          <Textarea
+          <TiptapEditor
             id="description"
             v-model="description"
             placeholder="Ürün açıklaması..."
-            rows="4"
             :class="{ 'border-destructive': errors.description }"
           />
           <p v-if="errors.description" class="text-xs text-destructive">

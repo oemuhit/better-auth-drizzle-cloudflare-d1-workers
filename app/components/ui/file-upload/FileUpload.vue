@@ -19,9 +19,8 @@ const emit = defineEmits<{
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const files = ref<File[]>([]);
 const isActive = ref<boolean>(false);
-const isUploading = ref<boolean>(false);
 
-const targetWidths = [160, 256, 512, 800, 1024];
+const { isUploading, uploadImage } = useImageUpload()
 
 async function handleFileChange(newFiles: File[]) {
   files.value = [...files.value, ...newFiles];
@@ -34,69 +33,20 @@ async function handleFileChange(newFiles: File[]) {
 
 async function uploadImages(filesToUpload: File[]) {
   console.log('Starting upload for', filesToUpload.length, 'files');
-  isUploading.value = true;
   try {
     for (const file of filesToUpload) {
-      if (!file.type.startsWith('image/')) {
-        console.warn('Skipping non-image file:', file.name);
-        continue;
-      }
-
       console.log('Processing file:', file.name);
-      const formData = new FormData();
-      formData.append('original', file, file.name);
-
-      // Create ImageData from the file using canvas
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement('canvas');
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Could not get canvas context');
-      ctx.drawImage(bitmap, 0, 0);
-      const originalImageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-
-      // Resized versions using jSquash
-      await Promise.all(targetWidths.map(async (width) => {
-        try {
-          console.log(`Processing ${file.name} to ${width}w...`);
-          
-          // Calculate height to maintain aspect ratio
-          const aspectRatio = originalImageData.height / originalImageData.width;
-          const height = Math.round(width * aspectRatio);
-          
-          // Resize using jSquash
-          const resizedImageData = await resize(originalImageData, { width, height });
-          
-          // Encode to WebP using jSquash
-          const webpBuffer = await encodeWebP(resizedImageData, { quality: 80 });
-          
-          // Create File from buffer
-          const compressedFile = new File([webpBuffer], `${width}w.webp`, { type: 'image/webp' });
-          formData.append(`${width}w`, compressedFile);
-        } catch (error) {
-          console.error(`jSquash error for width ${width}:`, error);
-        }
-      }));
-
-      console.log('Sending to API...');
-      const response = await $fetch('/api/images/upload', {
-        method: 'POST',
-        body: formData
-      }) as any;
+      const response = await uploadImage(file)
 
       console.log('API Response:', response);
       if (response?.success) {
         emit('onUploadComplete', response.imageId);
-      } else {
-        throw new Error(response?.statusMessage || 'Upload failed');
       }
     }
   } catch (err: any) {
     console.error('Upload Error:', err);
     alert('Yükleme hatası: ' + (err.message || 'Bilinmeyen hata'));
   } finally {
-    isUploading.value = false;
     console.log('Upload process finished');
   }
 }

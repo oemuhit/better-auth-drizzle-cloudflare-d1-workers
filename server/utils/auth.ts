@@ -28,7 +28,7 @@ export const serverAuth = (event: any) => {
     }),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+
 
     },
     socialProviders: {

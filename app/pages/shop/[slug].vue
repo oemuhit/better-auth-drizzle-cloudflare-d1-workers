@@ -6,11 +6,15 @@ import {
   ShieldCheck,
   RotateCcw,
   Heart,
+  Pencil,
 } from "lucide-vue-next";
+import { useSession } from "~/lib/auth-client";
 
 definePageMeta({
   layout: "default",
 });
+
+const { data: session } = await useSession(useFetch);
 
 const route = useRoute();
 const slug = computed(() => route.params.slug as string);
@@ -207,8 +211,16 @@ const reviewCount = 12;
             >
               {{ product.category.title }}
             </NuxtLink>
-            <h1 class="text-3xl lg:text-4xl font-bold mt-2">
+            <h1 class="text-3xl lg:text-4xl font-bold mt-2 flex items-center gap-3">
               {{ product.title }}
+              <NuxtLink 
+                v-if="session?.user" 
+                :to="`/admin/products/${product.id}/edit`"
+                class="text-muted-foreground hover:text-primary transition-colors"
+                title="Ürünü Düzenle"
+              >
+                <Pencil class="h-6 w-6" />
+              </NuxtLink>
             </h1>
           </div>
 
@@ -271,10 +283,10 @@ const reviewCount = 12;
 
           <!-- Description Short -->
           <p
-            v-if="product.description"
+            v-if="product.shortDescription || product.description"
             class="text-muted-foreground line-clamp-3"
           >
-            {{ product.description }}
+            {{ product.shortDescription || product.description?.replace(/<[^>]*>?/gm, '') || '' }}
           </p>
 
           <!-- Variants -->
@@ -347,11 +359,11 @@ const reviewCount = 12;
             <TabsTrigger value="reviews">Değerlendirmeler</TabsTrigger>
           </TabsList>
           <TabsContent value="description" class="mt-6">
-            <div class="prose prose-sm max-w-none">
-              <p v-if="product.description">{{ product.description }}</p>
-              <p v-else class="text-muted-foreground">
-                Bu ürün için detaylı açıklama bulunmuyor.
-              </p>
+            <div v-if="product.description">
+              <TiptapContent :content="product.description" />
+            </div>
+            <div v-else class="text-muted-foreground">
+              Bu ürün için detaylı açıklama bulunmuyor.
             </div>
           </TabsContent>
           <TabsContent value="reviews" class="mt-6">
