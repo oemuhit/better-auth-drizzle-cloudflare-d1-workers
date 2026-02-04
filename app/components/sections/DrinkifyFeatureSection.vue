@@ -14,7 +14,7 @@ const features = [
     title: "All-Natural Ingredients",
     subtitle: "Organic and Natural",
     description: "Nature is pure, and so are our products. We create plant-powered balms and oils formulated only with clean ingredients – you won’t find petrochemicals or synthetic fragrances in our collection.",
-    image: "https://images.unsplash.com/photo-1506377247377-2a5b3b0ca7df?w=800",
+    image: "https://images.unsplash.com/photo-1516594915697-87eb3b1c14ea?auto=format&fit=crop&q=80&w=800",
     reverse: true
   }
 ];
@@ -24,16 +24,14 @@ const features = [
   <section class="py-24 bg-gray-50 overflow-hidden">
     <div class="container mx-auto px-4">
       <div v-for="(feature, i) in features" :key="i" class="mb-24 last:mb-0">
-        <div 
-          class="grid lg:grid-cols-2 gap-12 items-center"
-          :class="{ 'lg:direction-rtl': feature.reverse }"
-        >
+        <div class="grid lg:grid-cols-2 gap-12 items-center">
           <!-- Image Side -->
           <motion.div
             :initial="{ opacity: 0, x: feature.reverse ? 50 : -50 }"
             :animate="{ opacity: 1, x: 0 }"
             :transition="{ duration: 0.8, delay: 0.2 }"
             class="relative aspect-video lg:aspect-square overflow-hidden rounded-2xl shadow-2xl"
+            :class="{ 'lg:order-2': feature.reverse }"
           >
             <img 
               :src="feature.image" 
@@ -50,7 +48,10 @@ const features = [
             :animate="{ opacity: 1, y: 0 }"
             :transition="{ duration: 0.8, delay: 0.4 }"
             class="flex flex-col gap-6"
-            :class="{ 'lg:pr-12': !feature.reverse, 'lg:pl-12': feature.reverse }"
+            :class="{ 
+              'lg:pr-12': !feature.reverse, 
+              'lg:pl-12 lg:order-1': feature.reverse 
+            }"
           >
             <span class="text-primary font-medium tracking-[0.2em] uppercase text-xs">
               {{ feature.subtitle }}
@@ -88,12 +89,5 @@ const features = [
 
 .font-serif {
   font-family: 'Playfair Display', serif;
-}
-
-.direction-rtl {
-  direction: rtl;
-}
-.direction-rtl > * {
-  direction: ltr;
 }
 </style>

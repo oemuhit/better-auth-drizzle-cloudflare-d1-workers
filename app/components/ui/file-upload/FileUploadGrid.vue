@@ -8,8 +8,8 @@ interface FileUploadGridProps {
 
 const props = defineProps<FileUploadGridProps>();
 
-const ROWS = 11;
-const COLUMNS = 41;
+const ROWS = 6;
+const COLUMNS = 10;
 
 const filePreviews = ref<string[]>([]);
 
@@ -40,7 +40,7 @@ onBeforeUnmount(() => {
         :key="`${row}-${col}`"
       >
         <div
-          class="flex h-10 w-10 flex-shrink-0 rounded-[2px] overflow-hidden relative"
+          class="flex h-6 w-6 flex-shrink-0 rounded-[2px] overflow-hidden relative"
           :class="[
             ((row - 1) * COLUMNS + (col - 1)) % 2 === 0
               ? 'bg-gray-50 dark:bg-neutral-950'

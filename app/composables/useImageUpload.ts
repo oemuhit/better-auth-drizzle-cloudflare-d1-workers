@@ -13,15 +13,26 @@ export function useImageUpload() {
     isUploading.value = true;
     try {
       const formData = new FormData();
-      formData.append('original', file, file.name);
+      // Use standard 'image' field for all parts. 
+      // Filename is provided by the File object itself.
+      formData.append('image', file);
 
       // Create ImageData from the file using canvas
-      const bitmap = await createImageBitmap(file);
+      let bitmap: ImageBitmap;
+      try {
+        bitmap = await createImageBitmap(file);
+      } catch (err) {
+        console.error('[useImageUpload] createImageBitmap failed:', err);
+        throw new Error(`Failed to process image: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
       const canvas = document.createElement('canvas');
       canvas.width = bitmap.width;
       canvas.height = bitmap.height;
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Could not get canvas context');
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
       ctx.drawImage(bitmap, 0, 0);
       const originalImageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
 
@@ -40,9 +51,10 @@ export function useImageUpload() {
           
           // Create File from buffer
           const compressedFile = new File([webpBuffer], `${width}w.webp`, { type: 'image/webp' });
-          formData.append(`${width}w`, compressedFile);
+          formData.append('image', compressedFile);
         } catch (error) {
-          console.error(`jSquash error for width ${width}:`, error);
+          console.error(`[useImageUpload] jSquash error for width ${width}:`, error);
+          // We don't throw here to allow other sizes to succeed, but maybe we should log it
         }
       }));
 
@@ -54,8 +66,12 @@ export function useImageUpload() {
       if (response?.success) {
         return response;
       } else {
+        console.error('[useImageUpload] Server returned error:', response);
         throw new Error(response?.error || 'Upload failed');
       }
+    } catch (err: any) {
+      console.error('[useImageUpload] Fatal Error:', err);
+      throw err;
     } finally {
       isUploading.value = false;
     }

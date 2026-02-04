@@ -226,7 +226,7 @@ watch(
             v-else-if="products.length > 0"
             class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
           >
-            <ProductCard
+            <DrinkifyProductCard
               v-for="product in products"
               :key="product.id"
               :product="product"

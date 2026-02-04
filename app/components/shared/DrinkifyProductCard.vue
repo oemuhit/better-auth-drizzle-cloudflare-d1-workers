@@ -6,12 +6,25 @@ const props = defineProps<{
 }>();
 
 const isHovered = ref(false);
+const img = useImage();
 
 const imageUrl = computed(() => {
-  if (!props.product.thumbnail) return '/placeholder-bottle.png';
-  return props.product.thumbnail.startsWith('http') 
-    ? props.product.thumbnail 
-    : `/images/${props.product.thumbnail}`;
+ const firstImage = props.product.thumbnail || props.product.images[0].url
+
+  if (!firstImage) return '/placeholder-bottle.png';
+  
+  if (firstImage.startsWith('http')) {
+    return firstImage;
+  }
+
+  // Use the Nuxt Image provider (r2) to resolve the ID
+  // Prefer 'medium' (512w) for the product card
+  try {
+    return img(firstImage, {width: 512 });
+  } catch (e) {
+    console.error('[DrinkifyProductCard] Failed to resolve image:', e);
+    return `/images/${firstImage}`; // Fallback
+  }
 });
 </script>
 
@@ -26,12 +39,12 @@ const imageUrl = computed(() => {
       <!-- Gray Background Area -->
       <motion.div 
         class="absolute bottom-0 w-full bg-[#eee] rounded-[1.2rem] z-0 overflow-hidden"
-        :animate="isHovered ? { height: '300px' } : { height: '200px' }"
-        :transition="{ type: 'spring', stiffness: 300, damping: 20 }"
+        :animate="isHovered ? { height: '320px' } : { height: '200px' }"
+        :transition="{ type: 'spring', stiffness: 600, damping: 20 }"
       >
         <!-- White Square (on hover) -->
         <motion.div 
-          class="absolute inset-0 m-auto w-[200px] h-[200px] bg-white z-0"
+          class="absolute inset-0 m-auto w-[180px] h-[200px] bg-white z-0 rounded-sm"
           :initial="{ opacity: 0, scale: 0.8 }"
           :animate="isHovered ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }"
           :transition="{ duration: 0.4 }"
@@ -62,7 +75,12 @@ const imageUrl = computed(() => {
     </div>
 
     <!-- Product Info (Left aligned content below card) -->
-    <div class="w-full space-y-1 text-left">
+    <motion.div
+
+      :animate="isHovered ? { opacity: 1, y: 0, scale: 1.05 } : { opacity: 1, y: 0, scale: 1 }"
+      :transition="{ duration: 0.4 }"
+      class="w-full space-y-1 text-left "
+    >
       <NuxtLink :to="`/shop/${product.slug}`">
         <h3 
           class="text-xl font-serif transition-colors duration-300 line-clamp-1"
@@ -83,7 +101,7 @@ const imageUrl = computed(() => {
           Add To Cart
         </Button>
       </div>
-    </div>
+    </motion.div>
   </div>
 </template>
 

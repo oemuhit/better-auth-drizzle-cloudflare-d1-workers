@@ -27,8 +27,23 @@ export default defineEventHandler(async (event) => {
         for (const part of formData) {
             if (!part.data || part.data.length === 0) continue;
 
-            const name = part.name || 'file';
-            const key = `${imageId}_${name}.webp`;
+            // Robust naming: use filename if available, fallback to field name
+            const rawFileName = part.filename || part.name || 'file';
+            console.log(`[Upload] Processing part: name="${part.name}", filename="${part.filename}", resolved="${rawFileName}"`);
+            
+            // 1. Remove ALL extensions (everything after the first dot if multiple, or just strip standard ones)
+            // Splitting and taking the first part is safest for our use case where we generate controlled filenames
+            let baseName = rawFileName.split('.')[0];
+            
+            // 2. Sanitize: replace non-alphanumeric with underscores and lowercase
+            baseName = baseName
+                .replace(/[^a-zA-Z0-9_\-]/g, "_") 
+                .toLowerCase();
+
+            // Fallback if baseName ends up empty
+            if (!baseName) baseName = 'image';
+
+            const key = `${imageId}_${baseName}.webp`;
 
             console.log(`[Upload] Sending ${key} to R2 (${part.data.length} bytes)`);
 
@@ -37,7 +52,7 @@ export default defineEventHandler(async (event) => {
 
             await cloudflare.env.BUCKET.put(key, data, {
                 httpMetadata: {
-                    contentType: part.type || 'image/webp',
+                    contentType: 'image/webp', // We ensure it's webp
                 }
             });
             uploadedFiles.push(key);

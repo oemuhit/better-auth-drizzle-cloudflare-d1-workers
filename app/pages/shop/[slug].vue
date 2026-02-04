@@ -158,11 +158,13 @@ const reviewCount = 12;
           <div
             class="aspect-square rounded-2xl overflow-hidden bg-muted relative group"
           >
+
             <NuxtImg
               v-if="mainImage"
               :src="mainImage.url"
               :alt="mainImage.alt || (product?.title ?? '')"
               preset="large"
+
               class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
             <!-- Wishlist Button -->
@@ -326,6 +328,11 @@ const reviewCount = 12;
               full-width
             />
           </div>
+
+    <div v-if="product.description">
+              <TiptapContent :content="product.description" />
+            </div>
+
 
           <!-- Features -->
           <div class="grid grid-cols-3 gap-4 pt-4">
