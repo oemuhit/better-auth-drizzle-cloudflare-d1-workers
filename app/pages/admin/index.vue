@@ -14,7 +14,7 @@ const { data: productsData } = await useFetch("/api/products", {
   query: { includeAll: true, limit: 1 },
 });
 const { data: ordersData } = await useFetch("/api/admin/orders", {
-  query: { limit: 5 },
+  query: { limit: 500 },
 });
 const { data: categoriesData } = await useFetch("/api/categories", {
   query: { includeInactive: true },
@@ -29,7 +29,7 @@ const totalCategories = computed(() => categoriesData.value?.data?.length || 0);
 
 // Calculate total revenue (simple sum)
 const totalRevenue = computed(() => {
-  return recentOrders.value.reduce(
+  return recentOrders.value.filter(order => order.status === "completed").reduce(
     (sum: number, order: any) => sum + (order.total || 0),
     0,
   );
@@ -53,6 +53,8 @@ function formatDate(date: number | Date) {
 </script>
 
 <template>
+
+
   <div class="space-y-6">
     <div>
       <h1 class="text-3xl font-bold">Dashboard</h1>
@@ -95,7 +97,7 @@ function formatDate(date: number | Date) {
           </div>
           <div v-else class="space-y-4">
             <div
-              v-for="order in recentOrders"
+              v-for="order in recentOrders.slice(0, 5)"
               :key="order.id"
               class="flex items-center justify-between"
             >

@@ -1,4 +1,4 @@
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, sql, desc, and } from "drizzle-orm";
 import { useDb } from "../../../utils/db";
 import { user, order } from "../../../db/schema";
 
@@ -13,22 +13,26 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Get customer with stats
-  const customers = await db
-    .select({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      image: user.image,
-      createdAt: user.createdAt,
-      totalSpent:
-        sql<number>`(SELECT COALESCE(SUM("total"), 0) FROM "order" WHERE "order"."user_id" = ${user.id} AND "order"."payment_status" = 'paid')`.as(
-          "total_spent",
-        ),
-    })
-    .from(user)
-    .where(eq(user.id, id))
-    .limit(1);
+
+
+const customers = await db
+  .select({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    createdAt: user.createdAt,
+    totalSpent: sql<number>`COALESCE(SUM(${order.total}), 0)`,
+  })
+  .from(user)
+  .leftJoin(order, and(
+    eq(order.userId, user.id),
+    eq(order.paymentStatus, 'paid')
+  ))
+  .where(eq(user.id, id))
+  .groupBy(user.id)
+  .limit(1);
+
 
   if (customers.length === 0) {
     throw createError({
