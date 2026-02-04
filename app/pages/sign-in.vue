@@ -1,87 +1,35 @@
 <script setup lang="ts">
-import { signIn } from "../lib/auth-client";
+import { Leaf } from "lucide-vue-next"
+import LoginForm from '@/components/login-02/components/LoginForm.vue'
 
-const email = ref("");
-const password = ref("");
-
-const handleSignIn = async () => {
-  await signIn.email(
-    {
-      email: email.value,
-      password: password.value,
-      callbackURL: "/",
-    },
-    {
-      onError(context) {
-        alert(context.error.message);
-      },
-    }
-  );
-};
+definePageMeta({
+  layout: false
+})
 </script>
 
 <template>
-  <div class="h-screen flex justify-center items-center">
-    <Card class="mx-auto max-w-sm">
-      <CardHeader>
-        <CardTitle class="text-2xl"> Login </CardTitle>
-        <CardDescription>
-          Enter your email below to login to your account
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div class="grid gap-4">
-          <div class="grid gap-2">
-            <Label for="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="m@example.com"
-              v-model="email"
-              required
-            />
+  <div class="grid min-h-svh lg:grid-cols-2">
+    <div class="flex flex-col gap-4 p-6 md:p-10">
+      <div class="flex justify-center gap-2 md:justify-start">
+        <NuxtLink to="/" class="flex items-center gap-2 font-medium">
+          <div class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+            <Leaf class="size-4" />
           </div>
-          <div class="grid gap-2">
-            <div class="flex items-center">
-              <Label for="password">Password</Label>
-              <a
-                href="/forget-password"
-                class="ml-auto inline-block text-sm underline"
-              >
-                Forgot your password?
-              </a>
-            </div>
-            <Input
-              id="password"
-              type="password"
-              placeholder="password"
-              v-model="password"
-              required
-            />
-          </div>
-          <Button type="submit" class="w-full" @click="handleSignIn">
-            Login
-          </Button>
-          <Button
-            variant="outline"
-            class="w-full"
-            @click="
-              async () => {
-                await signIn.social({
-                  provider: 'google',
-                  callbackURL: '/',
-                });
-              }
-            "
-          >
-            Login with Google
-          </Button>
+          Organik Market
+        </NuxtLink>
+      </div>
+      <div class="flex flex-1 items-center justify-center">
+        <div class="w-full max-w-xs">
+          <LoginForm />
         </div>
-        <div class="mt-4 text-center text-sm">
-          Don't have an account?
-          <a href="/sign-up" class="underline"> Sign up </a>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
+    <div class="bg-muted relative hidden lg:block">
+      <img
+        src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&q=80"
+        alt="Organik Ürünler"
+        class="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+      >
+    </div>
   </div>
 </template>
