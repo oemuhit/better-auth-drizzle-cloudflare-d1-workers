@@ -99,6 +99,7 @@ interface ProductFormData {
   isFeatured: boolean;
   isNew: boolean;
   trackInventory: boolean;
+  stockQuantity: number;
   metaTitle: string;
   metaDescription: string;
   // Gallery
@@ -136,6 +137,7 @@ const formData = reactive<ProductFormData>({
   isFeatured: (props.product as any)?.isFeatured || false,
   isNew: (props.product as any)?.isNew || false,
   trackInventory: (props.product as any)?.trackInventory ?? true,
+  stockQuantity: (props.product as any)?.stockQuantity || 0,
   metaTitle: (props.product as any)?.metaTitle || "",
   metaDescription: (props.product as any)?.metaDescription || "",
   images:
@@ -396,6 +398,13 @@ const handleSubmit = handleVeeSubmit(async (values) => {
   // Merge variants and images which might have been updated manually in formData
   const finalData = {
     ...values,
+    trackInventory: formData.trackInventory,
+    stockQuantity: formData.stockQuantity,
+    isFeatured: formData.isFeatured,
+    isNew: formData.isNew,
+    compareAtPrice: formData.compareAtPrice,
+    metaTitle: formData.metaTitle,
+    metaDescription: formData.metaDescription,
     variants: formData.variants,
     images: formData.images,
     variantAttributes: formData.variantAttributes,
@@ -710,6 +719,22 @@ const weightUnits = [
             <Label for="trackInventory" class="cursor-pointer"
               >Stok Takibi</Label
             >
+          </div>
+          
+          <!-- Product Level Stock (if no variants) -->
+          <div 
+            v-if="formData.trackInventory && formData.variants.length === 0" 
+            class="flex items-center space-x-4 ml-4 pl-4 border-l"
+          >
+            <Label for="stockQuantity">Stok Adedi</Label>
+            <Input
+              id="stockQuantity"
+              v-model.number="formData.stockQuantity"
+              type="number"
+              min="0"
+              class="w-32 h-9"
+              placeholder="0"
+            />
           </div>
         </div>
       </CardContent>

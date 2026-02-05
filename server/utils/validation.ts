@@ -58,6 +58,7 @@ export const productSchema = z.object({
     isFeatured: z.boolean().default(false),
     isNew: z.boolean().default(false),
     trackInventory: z.boolean().default(true),
+    stockQuantity: z.number().default(0),
     sort: z.number().default(0),
 });
 

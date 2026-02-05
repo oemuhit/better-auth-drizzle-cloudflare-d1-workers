@@ -1,41 +1,48 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { drizzle } from "drizzle-orm/d1";
-import * as schema from "../db/schema/auth-schema"; // Drizzle şemanız
+import { useDb } from "./db";
+import * as schema from "../db/schema";
 
 export const serverAuth = (event: any) => {
-  // Cloudflare D1 binding'ini al
-  if (!event.context?.cloudflare?.env) {
-    throw new Error(
-      "Cloudflare context is not available. Make sure you're running in a Cloudflare Workers environment.",
-    );
+  // Check request-scope cache
+  if (event.context.auth) {
+    return event.context.auth;
   }
-  const DB = event.context.cloudflare.env.nuxtdb;
-  if (!DB) {
-    throw new Error(
-      "D1 database binding 'nuxtdb' is not available. Check your wrangler.jsonc configuration.",
-    );
+
+  // Prevent recursion
+  if (event.context._auth_init) {
+    console.error("[Auth] Recursive initialization detected!");
+    return event.context._auth_init;
   }
-  const db = drizzle(DB, { schema });
 
-  // Get environment variables for OAuth
-  const env = event.context.cloudflare.env;
+  const db = useDb(event);
+  const config = useRuntimeConfig(event);
+  const env = event.context.cloudflare?.env;
+  const siteUrl = config.public.siteUrl;
 
-  return betterAuth({
-    trustedOrigins: ["http://localhost:3000"],
+  const auth = betterAuth({
+    trustedOrigins: ["http://localhost:3000", siteUrl],
     database: drizzleAdapter(db, {
       provider: "sqlite",
+      schema: {
+        user: schema.user,
+        session: schema.session,
+        account: schema.account,
+        verification: schema.verification
+      }
     }),
     emailAndPassword: {
       enabled: true,
-
-
     },
     socialProviders: {
       google: {
-        clientId: env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || "",
-        clientSecret: env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || "",
+        clientId: env?.GOOGLE_CLIENT_ID || "",
+        clientSecret: env?.GOOGLE_CLIENT_SECRET || "",
       },
     },
   });
+
+  event.context.auth = auth;
+  event.context._auth_init = auth;
+  return auth;
 };

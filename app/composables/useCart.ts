@@ -1,3 +1,4 @@
+import { toast } from "vue-sonner";
 import type { Product, ProductVariant } from "~~/server/db/schema";
 
 export interface CartItem {
@@ -24,6 +25,15 @@ export function useCart() {
   const isLoading = useState<boolean>("cart-loading", () => false);
   const error = useState<string | null>("cart-error", () => null);
 
+  function setError(msg: string) {
+    console.log("Cart Error Toast Attempt:", msg);
+    error.value = msg;
+    toast.error(msg);
+    setTimeout(() => {
+      if (error.value === msg) error.value = null;
+    }, 5000);
+  }
+
   // Fetch cart from server
   async function fetchCart() {
     isLoading.value = true;
@@ -41,7 +51,7 @@ export function useCart() {
       if (err.statusCode === 401) {
         cart.value = null;
       } else {
-        error.value = err.message || "Failed to fetch cart";
+        setError(err.data?.statusMessage || err.message || "Failed to fetch cart");
       }
     } finally {
       isLoading.value = false;
@@ -74,12 +84,13 @@ export function useCart() {
       if (response.success) {
         // Refresh full cart data
         await fetchCart();
+        console.log("Cart Success Toast Attempt:", response.message || "Ürün sepete eklendi");
+        toast.success(response.message || "Ürün sepete eklendi");
         return true;
       }
       return false;
     } catch (err: any) {
-      error.value =
-        err.data?.statusMessage || err.message || "Failed to add to cart";
+      setError(err.data?.statusMessage || err.message || "Failed to add to cart");
       return false;
     } finally {
       isLoading.value = false;
@@ -105,12 +116,12 @@ export function useCart() {
 
       if (response.success) {
         await fetchCart();
+        toast.success("Sepet güncellendi");
         return true;
       }
       return false;
     } catch (err: any) {
-      error.value =
-        err.data?.statusMessage || err.message || "Failed to update cart";
+      setError(err.data?.statusMessage || err.message || "Failed to update cart");
       return false;
     } finally {
       isLoading.value = false;
@@ -132,12 +143,12 @@ export function useCart() {
 
       if (response.success) {
         await fetchCart();
+        toast.success("Ürün sepetten çıkarıldı");
         return true;
       }
       return false;
     } catch (err: any) {
-      error.value =
-        err.data?.statusMessage || err.message || "Failed to remove item";
+      setError(err.data?.statusMessage || err.message || "Failed to remove item");
       return false;
     } finally {
       isLoading.value = false;
@@ -158,12 +169,12 @@ export function useCart() {
         cart.value = cart.value
           ? { ...cart.value, items: [], subtotal: 0, itemCount: 0 }
           : null;
+        toast.success("Sepet temizlendi");
         return true;
       }
       return false;
     } catch (err: any) {
-      error.value =
-        err.data?.statusMessage || err.message || "Failed to clear cart";
+      setError(err.data?.statusMessage || err.message || "Failed to clear cart");
       return false;
     } finally {
       isLoading.value = false;

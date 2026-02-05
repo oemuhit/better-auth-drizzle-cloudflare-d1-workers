@@ -1,7 +1,7 @@
-import { eq, and, lt, sql } from "drizzle-orm";
+import { eq, and, lt, sql, isNull } from "drizzle-orm";
 import { H3Event } from "h3";
 import { useDb } from "./db";
-import { stockReservation, productVariant } from "../db/schema";
+import { stockReservation, productVariant, product } from "../db/schema";
 
 const RESERVATION_TTL_MINUTES = 15;
 
@@ -18,46 +18,59 @@ interface ReservationResult {
 export async function reserveStock(
   event: H3Event,
   orderId: string,
-  variantId: string,
-  quantity: number
+  variantId: string | null,
+  quantity: number,
+  productId?: string
 ): Promise<ReservationResult> {
   const db = useDb(event);
   const expiresAt = Math.floor(Date.now() / 1000) + RESERVATION_TTL_MINUTES * 60;
 
-  // First, clean up expired reservations for this variant
+  // Normalize IDs - ensure empty strings are treated as null
+  const vId = (variantId && variantId.trim() !== "") ? variantId : null;
+  const pId = (productId && productId.trim() !== "") ? productId : null;
+
+  // First, clean up expired reservations
   await db
     .delete(stockReservation)
     .where(
       and(
-        eq(stockReservation.productVariantId, variantId),
+        vId ? eq(stockReservation.productVariantId, vId) : eq(stockReservation.productId, pId!),
         lt(stockReservation.expiresAt, Math.floor(Date.now() / 1000)),
         eq(stockReservation.confirmed, false)
       )
     );
 
-  // Get current variant stock
-  const variant = await db.query.productVariant.findFirst({
-    where: eq(productVariant.id, variantId),
-  });
-
-  if (!variant) {
-    return { success: false, error: "Ürün varyantı bulunamadı" };
+  let currentStock = 0;
+  if (vId) {
+    const variant = await db.query.productVariant.findFirst({
+      where: eq(productVariant.id, vId),
+    });
+    if (!variant) return { success: false, error: "Ürün varyantı bulunamadı" };
+    currentStock = variant.stockQuantity;
+  } else if (pId) {
+    const prod = await db.query.product.findFirst({
+      where: eq(product.id, pId),
+    });
+    if (!prod) return { success: false, error: "Ürün bulunamadı" };
+    currentStock = prod.stockQuantity;
+  } else {
+    return { success: false, error: "Product ID or Variant ID required" };
   }
 
-  // Calculate reserved quantity (excluding confirmed and expired)
+  // Calculate reserved quantity
   const reservedResult = await db
     .select({ total: sql<number>`COALESCE(SUM(${stockReservation.quantity}), 0)` })
     .from(stockReservation)
     .where(
       and(
-        eq(stockReservation.productVariantId, variantId),
+        vId ? eq(stockReservation.productVariantId, vId) : eq(stockReservation.productId, pId!),
         eq(stockReservation.confirmed, false),
         sql`${stockReservation.expiresAt} > ${Math.floor(Date.now() / 1000)}`
       )
     );
 
   const reservedQuantity = reservedResult[0]?.total || 0;
-  const availableStock = (variant.stockQuantity || 0) - reservedQuantity;
+  const availableStock = currentStock - reservedQuantity;
 
   if (availableStock < quantity) {
     return { 
@@ -71,7 +84,8 @@ export async function reserveStock(
     .insert(stockReservation)
     .values({
       orderId,
-      productVariantId: variantId,
+      productVariantId: vId,
+      productId: vId ? null : pId,
       quantity,
       expiresAt,
     })
@@ -99,19 +113,25 @@ export async function confirmReservation(
   });
 
   if (reservations.length === 0) {
-    // No reservations to confirm (might already be confirmed or expired)
     return { success: true };
   }
 
-  // Confirm each reservation and decrement stock
   for (const reservation of reservations) {
-    // Decrement stock
-    await db
-      .update(productVariant)
-      .set({
-        stockQuantity: sql`MAX(0, ${productVariant.stockQuantity} - ${reservation.quantity})`,
-      })
-      .where(eq(productVariant.id, reservation.productVariantId));
+    if (reservation.productVariantId) {
+      await db
+        .update(productVariant)
+        .set({
+          stockQuantity: sql`MAX(0, ${productVariant.stockQuantity} - ${reservation.quantity})`,
+        })
+        .where(eq(productVariant.id, reservation.productVariantId));
+    } else if (reservation.productId) {
+      await db
+        .update(product)
+        .set({
+          stockQuantity: sql`MAX(0, ${product.stockQuantity} - ${reservation.quantity})`,
+        })
+        .where(eq(product.id, reservation.productId));
+    }
 
     // Mark as confirmed
     await db
@@ -124,7 +144,7 @@ export async function confirmReservation(
 }
 
 /**
- * Release a reservation (e.g., when payment fails or user cancels).
+ * Release a reservation
  */
 export async function releaseReservation(
   event: H3Event,
@@ -143,31 +163,41 @@ export async function releaseReservation(
 }
 
 /**
- * Get available stock for a variant (considering active reservations).
+ * Get available stock (considering active reservations).
  */
 export async function getAvailableStock(
   event: H3Event,
-  variantId: string
+  id: string,
+  isProduct: boolean = false
 ): Promise<number> {
   const db = useDb(event);
+  let currentStock = 0;
 
-  const variant = await db.query.productVariant.findFirst({
-    where: eq(productVariant.id, variantId),
-  });
-
-  if (!variant) return 0;
+  if (isProduct) {
+    const prod = await db.query.product.findFirst({
+      where: eq(product.id, id),
+    });
+    if (!prod) return 0;
+    currentStock = prod.stockQuantity;
+  } else {
+    const variant = await db.query.productVariant.findFirst({
+      where: eq(productVariant.id, id),
+    });
+    if (!variant) return 0;
+    currentStock = variant.stockQuantity;
+  }
 
   const reservedResult = await db
     .select({ total: sql<number>`COALESCE(SUM(${stockReservation.quantity}), 0)` })
     .from(stockReservation)
     .where(
       and(
-        eq(stockReservation.productVariantId, variantId),
+        isProduct ? eq(stockReservation.productId, id) : eq(stockReservation.productVariantId, id),
         eq(stockReservation.confirmed, false),
         sql`${stockReservation.expiresAt} > ${Math.floor(Date.now() / 1000)}`
       )
     );
 
   const reservedQuantity = reservedResult[0]?.total || 0;
-  return Math.max(0, (variant.stockQuantity || 0) - reservedQuantity);
+  return Math.max(0, currentStock - reservedQuantity);
 }

@@ -149,6 +149,32 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+    // --- STOCK RESERVATION ---
+    const { reserveStock, releaseReservation } = await import("../../utils/stockReservation");
+    try {
+      for (const item of userCart.items) {
+        const result = await reserveStock(
+          event,
+          newOrder.id,
+          item.productVariantId,
+          item.quantity,
+          item.productId
+        );
+        if (!result.success) {
+          throw createError({
+            statusCode: 400,
+            statusMessage: `${item.product.title} için stok yetersiz: ${result.error}`,
+          });
+        }
+      }
+    } catch (err: any) {
+      // releaseReservation is technically only needed if we want to delete the order record too, 
+      // but for now let's just throw to prevent clearing the cart and proceeding.
+      // We should ideally use a transaction here but D1 transactions are batch-based.
+      throw err;
+    }
+    // -------------------------
+
     // Clear cart
     await db.delete(cartItem).where(eq(cartItem.cartId, userCart.id));
 

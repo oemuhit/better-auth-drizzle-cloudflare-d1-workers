@@ -45,24 +45,21 @@ export default defineEventHandler(async (event) => {
           : null;
 
     // Calculate total stock
-    const totalStock = foundProduct.variants.reduce(
-      (sum, v) => sum + v.stockQuantity,
-      0,
-    );
+    const totalStock = foundProduct.variants.length > 0
+      ? foundProduct.variants.reduce((sum, v) => sum + v.stockQuantity, 0)
+      : foundProduct.stockQuantity;
 
     // Determine stock status
-    // If variants exist, use total stock. If no variants, assume in stock if active.
-    const inStock =
-      foundProduct.variants.length > 0
-        ? totalStock > 0
-        : foundProduct.status === "active";
+    const inStock = foundProduct.trackInventory
+      ? totalStock > 0
+      : true;
 
     return {
       success: true,
       data: {
         ...foundProduct,
         priceRange,
-        totalStock: foundProduct.variants.length > 0 ? totalStock : 1, // Default to 1 if no variants but active
+        totalStock,
         inStock,
       },
     };

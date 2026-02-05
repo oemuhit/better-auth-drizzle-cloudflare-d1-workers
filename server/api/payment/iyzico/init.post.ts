@@ -131,25 +131,32 @@ export default defineEventHandler(async (event) => {
 
     // --- STOCK RESERVATION (D1-based) ---
     const { reserveStock, releaseReservation } = await import("../../../utils/stockReservation");
-    const reservedVariants: string[] = [];
+    const reservedItems: Array<{ variantId: string | null, productId: string }> = [];
 
     try {
       for (const item of userCart.items) {
         const variantId = item.productVariantId;
-        if (!variantId) continue;
+        const productId = item.productId;
 
-        const result = await reserveStock(event, conversationId, variantId, item.quantity);
+        const result = await reserveStock(
+          event, 
+          conversationId, 
+          variantId, 
+          item.quantity, 
+          productId
+        );
+
         if (!result.success) {
           throw createError({
             statusCode: 400,
             statusMessage: `${item.product.title} için stok yetersiz: ${result.error}`,
           });
         }
-        reservedVariants.push(variantId);
+        reservedItems.push({ variantId, productId });
       }
     } catch (err: any) {
       // Rollback reservations on failure
-      if (reservedVariants.length > 0) {
+      if (reservedItems.length > 0) {
         await releaseReservation(event, conversationId);
       }
       throw err;

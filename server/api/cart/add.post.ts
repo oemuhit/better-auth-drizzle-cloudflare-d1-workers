@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { cart, cartItem, product, productVariant } from "../../db/schema";
 import { serverAuth } from "../../utils/auth";
@@ -50,26 +50,56 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // Verify variant if provided
-    if (body.productVariantId) {
-      const variant = productData.variants.find(
-        (v) => v.id === body.productVariantId,
-      );
-      if (!variant) {
-        throw createError({
-          statusCode: 404,
-          statusMessage: "Product variant not found",
-        });
+    let currentQuantityInCart = 0;
+    if (session?.user) {
+      const userCart = await db.query.cart.findFirst({
+        where: eq(cart.userId, session.user.id),
+        with: { items: true }
+      });
+      if (userCart) {
+        const item = userCart.items.find(i => 
+          i.productId === body.productId && 
+          i.productVariantId === (body.productVariantId || null)
+        );
+        currentQuantityInCart = item?.quantity || 0;
+      }
+    } else {
+      const cartId = getCookie(event, "cart_id");
+      const kv = event.context.cloudflare?.env?.GUEST_CARTS;
+      if (kv && cartId) {
+        const guestCartRaw = await kv.get(`cart:${cartId}`);
+        if (guestCartRaw) {
+          const guestCart = JSON.parse(guestCartRaw);
+          const item = guestCart.items.find((i: any) => 
+            i.productId === body.productId && 
+            i.productVariantId === (body.productVariantId || null)
+          );
+          currentQuantityInCart = item?.quantity || 0;
+        }
+      }
+    }
+
+    // Verify variant and check stock
+    const variantId = body.productVariantId || (productData.variants.length === 1 ? productData.variants[0].id : null);
+    const trackInventory = productData.trackInventory;
+
+    if (trackInventory) {
+      const { getAvailableStock } = await import("../../utils/stockReservation");
+      let availableStock = 0;
+      
+      if (variantId) {
+        availableStock = await getAvailableStock(event, variantId);
+      } else {
+        // Use product-level stock check
+        availableStock = await getAvailableStock(event, productData.id, true);
       }
 
-      // Check available stock (considering active reservations)
-      const { getAvailableStock } = await import("../../utils/stockReservation");
-      const availableStock = await getAvailableStock(event, variant.id);
+      const totalRequested = currentQuantityInCart + quantity;
       
-      if (availableStock < quantity) {
+      if (availableStock < totalRequested) {
         throw createError({
           statusCode: 400,
-          statusMessage: `Stok yetersiz. Mevcut: ${availableStock}`,
+          statusMessage: `Stok yetersiz. Sepetinizde ${currentQuantityInCart} adet var, toplamda en fazla ${availableStock} adet alabilirsiniz.`,
         });
       }
     }
@@ -95,7 +125,7 @@ export default defineEventHandler(async (event) => {
           eq(cartItem.productId, body.productId),
           body.productVariantId
             ? eq(cartItem.productVariantId, body.productVariantId)
-            : undefined,
+            : isNull(cartItem.productVariantId),
         ),
       });
 

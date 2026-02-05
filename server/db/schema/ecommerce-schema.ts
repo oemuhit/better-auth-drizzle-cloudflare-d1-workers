@@ -165,6 +165,7 @@ export const product = sqliteTable(
     trackInventory: integer("track_inventory", { mode: "boolean" })
       .default(true)
       .notNull(),
+    stockQuantity: integer("stock_quantity").default(0).notNull(),
     sort: integer("sort").default(0),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -644,8 +645,9 @@ export const stockReservation = sqliteTable(
       .$defaultFn(() => crypto.randomUUID()),
     orderId: text("order_id").notNull(),
     productVariantId: text("product_variant_id")
-      .notNull()
       .references(() => productVariant.id, { onDelete: "cascade" }),
+    productId: text("product_id")
+      .references(() => product.id, { onDelete: "cascade" }),
     quantity: integer("quantity").notNull().default(1),
     expiresAt: integer("expires_at").notNull(),
     confirmed: integer("confirmed", { mode: "boolean" }).notNull().default(false),
@@ -660,6 +662,7 @@ export const stockReservation = sqliteTable(
     index("idx_stock_reservation_expires").on(table.expiresAt),
     index("idx_stock_reservation_order").on(table.orderId),
     index("idx_stock_reservation_variant").on(table.productVariantId, table.confirmed),
+    index("idx_stock_reservation_product").on(table.productId, table.confirmed),
   ]
 );
 
@@ -667,6 +670,10 @@ export const stockReservationRelations = relations(stockReservation, ({ one }) =
   productVariant: one(productVariant, {
     fields: [stockReservation.productVariantId],
     references: [productVariant.id],
+  }),
+  product: one(product, {
+    fields: [stockReservation.productId],
+    references: [product.id],
   }),
 }));
 
