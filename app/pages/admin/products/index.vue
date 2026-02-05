@@ -3,8 +3,11 @@ import { Plus, MoreHorizontal, Pencil, Trash2, Eye } from "lucide-vue-next";
 import type { ColumnDef } from "@tanstack/vue-table";
 import { h } from "vue";
 
+import { toast } from "vue-sonner";
+
 definePageMeta({
   layout: "admin",
+  middleware: "admin",
 });
 
 useHead({
@@ -34,7 +37,7 @@ async function handleDelete() {
     await $fetch(`/api/products/${confirmDeleteId.value}`, { method: "DELETE" });
     await refresh();
   } catch (error: any) {
-    alert(error.data?.statusMessage || "Ürün silinemedi");
+    toast.error(error.data?.statusMessage || "Ürün silinemedi");
   } finally {
     isDeleteDialogOpen.value = false;
     confirmDeleteId.value = null;

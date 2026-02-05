@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, MapPin, CreditCard, Package } from "lucide-vue-next";
+import { ChevronLeft, MapPin, CreditCard, Package, LifeBuoy } from "lucide-vue-next";
 
 definePageMeta({
   layout: "default",
@@ -75,7 +75,12 @@ function getAddressDisplay(address: any) {
           <h1 class="text-3xl font-bold">{{ order.orderNumber }}</h1>
           <p class="text-muted-foreground">{{ formatDate(order.createdAt) }}</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center">
+          <Button variant="outline" size="sm" asChild>
+            <NuxtLink :to="`/account/tickets/create?orderId=${order.id}`">
+                <LifeBuoy class="w-4 h-4 mr-2" /> Destek Al
+            </NuxtLink>
+          </Button>
           <OrderStatusBadge :status="order.status" />
           <OrderStatusBadge :status="order.paymentStatus" type="payment" />
           <OrderStatusBadge

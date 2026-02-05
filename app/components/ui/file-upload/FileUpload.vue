@@ -11,6 +11,8 @@ interface FileUploadProps {
 
 defineProps<FileUploadProps>();
 
+import { toast } from "vue-sonner";
+
 const emit = defineEmits<{
   (e: "onChange", files: File[]): void;
   (e: "onUploadComplete", imageId: string): void;
@@ -44,8 +46,9 @@ async function uploadImages(filesToUpload: File[]) {
       }
     }
   } catch (err: any) {
-    console.error('Upload Error:', err);
-    alert('Yükleme hatası: ' + (err.message || 'Bilinmeyen hata'));
+    // Generic error fallback
+    console.error('GridFS Upload Error:', err);
+    toast.error('Yükleme hatası: ' + (err.message || 'Bilinmeyen hata'));
   } finally {
     console.log('Upload process finished');
   }

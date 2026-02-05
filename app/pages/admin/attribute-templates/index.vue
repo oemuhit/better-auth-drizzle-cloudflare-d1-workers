@@ -1,3 +1,4 @@
+```
 <script setup lang="ts">
 import {
   Plus,
@@ -9,6 +10,7 @@ import {
   ListFilter,
   Type,
 } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import type {
   AttributeTemplate,
   VariantAttributeOption,
@@ -16,7 +18,7 @@ import type {
 
 definePageMeta({
   layout: "admin",
-  middleware: "auth",
+  middleware: "admin",
 });
 
 useHead({
@@ -159,8 +161,9 @@ async function handleSubmit() {
 
     showDialog.value = false;
     await refresh();
+    toast.success("Özellik şablonu başarıyla kaydedildi");
   } catch (error: any) {
-    alert(error.data?.statusMessage || "İşlem başarısız");
+    toast.error(error.data?.statusMessage || "İşlem başarısız");
   } finally {
     isSubmitting.value = false;
   }
@@ -174,8 +177,9 @@ async function handleDelete() {
       method: "DELETE",
     });
     await refresh();
+    toast.success("Şablon silindi");
   } catch (error: any) {
-    alert(error.data?.statusMessage || "Silme işlemi başarısız");
+    toast.error(error.data?.statusMessage || "Silme işlemi başarısız");
   } finally {
     isDeleteDialogOpen.value = false;
     confirmDeleteData.value = null;
@@ -191,8 +195,9 @@ async function toggleActive(template: AttributeTemplate) {
       },
     });
     await refresh();
+    toast.success("Durum güncellendi");
   } catch (error: any) {
-    alert(error.data?.statusMessage || "Güncelleme başarısız");
+    toast.error(error.data?.statusMessage || "Güncelleme başarısız");
   }
 }
 </script>

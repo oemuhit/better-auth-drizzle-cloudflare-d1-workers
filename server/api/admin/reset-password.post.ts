@@ -10,15 +10,14 @@ import { user } from "../../db/schema";
 //   -H "Content-Type: application/json" \
 //   -d '{"email":"admin@example.com","secretKey":"TEMP_RESET_KEY_12345"}'
 
+import { requireAdmin } from "~~/server/utils/admin";
+
 export default defineEventHandler(async (event) => {
+  await requireAdmin(event);
   const db = useDb(event);
   const body = await readBody(event);
 
-  const { email, secretKey } = body;
-
-  if (secretKey !== "TEMP_RESET_KEY_12345") {
-    throw createError({ statusCode: 403, statusMessage: "Invalid secret key" });
-  }
+  const { email } = body;
 
   if (!email) {
     throw createError({ statusCode: 400, statusMessage: "Email required" });

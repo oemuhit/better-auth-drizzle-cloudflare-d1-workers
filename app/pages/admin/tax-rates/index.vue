@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Plus, Pencil, Trash2, Check } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import type { TaxRate } from "~~/server/db/schema";
 
 definePageMeta({
   layout: "admin",
-  middleware: "auth",
+  middleware: "admin",
 });
 
 useHead({
@@ -78,8 +79,9 @@ async function handleSubmit() {
 
     showDialog.value = false;
     await refresh();
+    toast.success("Vergi oranı başarıyla kaydedildi");
   } catch (error: any) {
-    alert(error.data?.statusMessage || "İşlem başarısız");
+    toast.error(error.data?.statusMessage || "İşlem başarısız");
   } finally {
     isSubmitting.value = false;
   }
@@ -93,8 +95,9 @@ async function handleDelete() {
       method: "DELETE",
     });
     await refresh();
+    toast.success("Vergi oranı silindi");
   } catch (error: any) {
-    alert(error.data?.statusMessage || "Silme işlemi başarısız");
+    toast.error(error.data?.statusMessage || "Silme işlemi başarısız");
   } finally {
     isDeleteDialogOpen.value = false;
     confirmDeleteData.value = null;
@@ -108,8 +111,9 @@ async function setDefault(taxRate: TaxRate) {
       body: { isDefault: true },
     });
     await refresh();
+    toast.success("Varsayılan vergi oranı güncellendi");
   } catch (error: any) {
-    alert(error.data?.statusMessage || "Güncelleme başarısız");
+    toast.error(error.data?.statusMessage || "Güncelleme başarısız");
   }
 }
 </script>

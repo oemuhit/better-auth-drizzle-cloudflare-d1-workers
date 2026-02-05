@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { 
-  Plus, 
-  MapPin, 
-  MoreVertical, 
-  Trash2, 
-  Edit2, 
-  Check, 
+  Plus,
+  MapPin,
+  MoreVertical,
+  Trash2,
+  Edit2,
+  Check,
   Loader2,
   AlertCircle,
   Home,
   Building2,
   Phone
 } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
@@ -95,16 +96,19 @@ const onSave = handleSubmit(async (formValues) => {
         method: "PATCH",
         body: formValues,
       });
+      toast.success("Adres güncellendi");
     } else {
       await $fetch("/api/user/addresses", {
         method: "POST",
         body: formValues,
       });
+      toast.success("Adres başarıyla eklendi");
     }
     await refresh();
     handleCancel();
   } catch (err: any) {
     error.value = err.data?.statusMessage || "Adres kaydedilemedi";
+    toast.error(error.value || "Bir hata oluştu");
   } finally {
     isSubmitting.value = false;
   }
@@ -117,9 +121,10 @@ async function deleteAddress() {
     await $fetch(`/api/user/addresses/${confirmDeleteId.value}`, {
       method: "DELETE",
     });
+    toast.success("Adres silindi");
     await refresh();
   } catch (err: any) {
-    alert("Adres silinemedi");
+    toast.error("Adres silinemedi");
   } finally {
     isDeleteDialogOpen.value = false;
     confirmDeleteId.value = null;
@@ -132,9 +137,10 @@ async function setAsDefault(address: any) {
       method: "PATCH",
       body: { ...address, isDefault: true },
     });
+    toast.success("Varsayılan adres güncellendi");
     await refresh();
   } catch (err: any) {
-    alert("Varsayılan adres güncellenemedi");
+    toast.error("Varsayılan adres güncellenemedi");
   }
 }
 

@@ -1,7 +1,10 @@
 import { product, productVariant, productImage } from "../../db/schema";
 import { createProductRequestSchema } from "../../utils/validation";
 
+import { requireAdmin } from "~~/server/utils/admin";
+
 export default defineEventHandler(async (event) => {
+  await requireAdmin(event);
   const db = useDb(event);
   const body = await readBody(event);
 

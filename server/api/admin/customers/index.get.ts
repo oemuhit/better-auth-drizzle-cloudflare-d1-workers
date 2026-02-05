@@ -1,8 +1,10 @@
 import { sql, desc, eq, count } from "drizzle-orm";
 import { useDb } from "../../../utils/db";
 import { user, order } from "../../../db/schema";
+import { requireAdmin } from "~~/server/utils/admin";
 
 export default defineEventHandler(async (event) => {
+  await requireAdmin(event);
   const db = useDb(event);
 
   // Get all users with their order stats using a join

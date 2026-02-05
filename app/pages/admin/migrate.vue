@@ -3,7 +3,7 @@ import { useImageUpload } from "~/composables/useImageUpload";
 
 definePageMeta({
   layout: "admin",
-  middleware: ["auth"],
+  middleware: "admin",
 });
 
 const { uploadImage, isUploading } = useImageUpload();

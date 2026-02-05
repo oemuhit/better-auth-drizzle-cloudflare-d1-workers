@@ -3,6 +3,7 @@ import { ChevronLeft, MapPin, User, Loader2 } from "lucide-vue-next";
 
 definePageMeta({
   layout: "admin",
+  middleware: "admin",
 });
 
 const route = useRoute();

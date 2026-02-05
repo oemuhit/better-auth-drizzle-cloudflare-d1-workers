@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { Plus, Pencil, Trash2 } from "lucide-vue-next";
+import { toast } from "vue-sonner";
+import { Plus, Pencil, Trash2, Check, X } from "lucide-vue-next";
 import type { ColumnDef } from "@tanstack/vue-table";
 import { h } from "vue";
+import { Button } from "@/components/ui/button";
 
 definePageMeta({
   layout: "admin",
+  middleware: "admin",
 });
 
 useHead({
@@ -46,9 +49,10 @@ async function handleDelete() {
 
   try {
     await $fetch(`/api/categories/${confirmDeleteId.value}`, { method: "DELETE" });
+    toast.success("Kategori silindi");
     await refresh();
   } catch (error: any) {
-    alert(error.data?.statusMessage || "Kategori silinemedi");
+    toast.error(error.data?.statusMessage || "Kategori silinemedi");
   } finally {
     isDeleteDialogOpen.value = false;
     confirmDeleteId.value = null;
@@ -77,11 +81,12 @@ async function handleSaveEdit() {
         image: editingCategory.value.image,
       },
     });
+    toast.success("Kategori güncellendi");
     await refresh();
     showEditDialog.value = false;
     editingCategory.value = null;
   } catch (error: any) {
-    alert(error.data?.statusMessage || "Kategori güncellenemedi");
+    toast.error(error.data?.statusMessage || "Kategori güncellenemedi");
   }
 }
 

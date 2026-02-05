@@ -267,14 +267,13 @@ const mockProducts = [
   },
 ];
 
+import { requireAdmin } from "~~/server/utils/admin";
+
 // DELETE THIS ENDPOINT AFTER SEEDING!
 export default defineEventHandler(async (event) => {
+  await requireAdmin(event);
   const db = useDb(event);
-  const body = await readBody(event);
-
-  if (body?.secretKey !== "SEED_KEY_12345") {
-    throw createError({ statusCode: 403, statusMessage: "Invalid secret key" });
-  }
+  const body = (await readBody(event)) || {};
 
   try {
     // Note: Run this SQL first to clear data:

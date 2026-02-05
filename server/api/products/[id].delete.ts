@@ -2,7 +2,10 @@ import { eq } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { product } from "../../db/schema";
 
+import { requireAdmin } from "~~/server/utils/admin";
+
 export default defineEventHandler(async (event) => {
+  await requireAdmin(event);
   const db = useDb(event);
   const id = getRouterParam(event, "id");
 

@@ -6,7 +6,8 @@ import {
   LogOut, 
   Heart, 
   Settings, 
-  Lock
+  Lock,
+  LifeBuoy
 } from "lucide-vue-next";
 
 import { authClient } from "~/lib/auth-client";
@@ -19,6 +20,7 @@ const menuItems = [
   { name: "Adreslerim", path: "/account/addresses", icon: MapPin },
   { name: "Siparişlerim", path: "/account/orders", icon: Package },
   { name: "Favorilerim", path: "/account/wishlist", icon: Heart },
+  { name: "Destek Taleplerim", path: "/account/tickets", icon: LifeBuoy },
   { name: "Ayarlar", path: "/account/settings", icon: Settings },
 ];
 

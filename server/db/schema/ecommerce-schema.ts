@@ -679,3 +679,104 @@ export const stockReservationRelations = relations(stockReservation, ({ one }) =
 
 export type StockReservation = typeof stockReservation.$inferSelect;
 export type NewStockReservation = typeof stockReservation.$inferInsert;
+
+// ============================================================================
+// TICKETS - Customer support system
+// ============================================================================
+export const ticket = sqliteTable(
+  "ticket",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    orderId: text("order_id").references(() => order.id, {
+      onDelete: "set null",
+    }),
+    subject: text("subject").notNull(),
+    category: text("category", {
+      enum: ["order", "payment", "account", "technical", "other"],
+    })
+      .notNull()
+      .default("other"),
+    status: text("status", {
+      enum: ["open", "closed", "pending", "in_progress"],
+    })
+      .notNull()
+      .default("open"),
+    priority: text("priority", {
+      enum: ["low", "medium", "high"],
+    })
+      .notNull()
+      .default("medium"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("idx_ticket_user").on(table.userId),
+    index("idx_ticket_order").on(table.orderId),
+    index("idx_ticket_status").on(table.status),
+  ],
+);
+
+export const ticketMessage = sqliteTable(
+  "ticket_message",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ticketId: text("ticket_id")
+      .notNull()
+      .references(() => ticket.id, { onDelete: "cascade" }),
+    senderId: text("sender_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    message: text("message").notNull(),
+    isAdmin: integer("is_admin", { mode: "boolean" }).default(false).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [index("idx_ticket_message_ticket").on(table.ticketId)],
+);
+
+// ============================================================================
+// RELATIONS - Tickets
+// ============================================================================
+export const ticketRelations = relations(ticket, ({ one, many }) => ({
+  user: one(user, {
+    fields: [ticket.userId],
+    references: [user.id],
+  }),
+  order: one(order, {
+    fields: [ticket.orderId],
+    references: [order.id],
+  }),
+  messages: many(ticketMessage),
+}));
+
+export const ticketMessageRelations = relations(ticketMessage, ({ one }) => ({
+  ticket: one(ticket, {
+    fields: [ticketMessage.ticketId],
+    references: [ticket.id],
+  }),
+  sender: one(user, {
+    fields: [ticketMessage.senderId],
+    references: [user.id],
+  }),
+}));
+
+// ============================================================================
+// TYPE EXPORTS - Tickets
+// ============================================================================
+export type Ticket = typeof ticket.$inferSelect;
+export type NewTicket = typeof ticket.$inferInsert;
+export type TicketMessage = typeof ticketMessage.$inferSelect;
+export type NewTicketMessage = typeof ticketMessage.$inferInsert;

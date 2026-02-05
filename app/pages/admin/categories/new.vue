@@ -3,6 +3,7 @@ import { ChevronLeft, Loader2 } from "lucide-vue-next";
 
 definePageMeta({
   layout: "admin",
+  middleware: "admin",
 });
 
 useHead({

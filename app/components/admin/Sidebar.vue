@@ -10,6 +10,7 @@ import {
   Store,
   Palette,
   Receipt,
+  LifeBuoy,
 } from "lucide-vue-next";
 
 const route = useRoute();
@@ -39,6 +40,11 @@ const menuItems = [
     title: "Müşteriler",
     icon: Users,
     href: "/admin/customers",
+  },
+  {
+    title: "Destek Talepleri",
+    icon: LifeBuoy,
+    href: "/admin/tickets",
   },
 ];
 

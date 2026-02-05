@@ -3,6 +3,7 @@ import { Package, ShoppingCart, Users, TrendingUp } from "lucide-vue-next";
 
 definePageMeta({
   layout: "admin",
+  middleware: "admin",
 });
 
 useHead({

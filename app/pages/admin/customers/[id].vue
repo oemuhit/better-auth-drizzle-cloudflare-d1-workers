@@ -9,6 +9,7 @@ import {
 
 definePageMeta({
   layout: "admin",
+  middleware: "admin",
 });
 
 const route = useRoute();

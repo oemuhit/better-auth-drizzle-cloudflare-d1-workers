@@ -1,8 +1,10 @@
 import { eq, desc, and, like, or, sql } from "drizzle-orm";
 import { useDb } from "../../../utils/db";
 import { order } from "../../../db/schema";
+import { requireAdmin } from "~~/server/utils/admin";
 
 export default defineEventHandler(async (event) => {
+  await requireAdmin(event);
   const db = useDb(event);
   const query = getQuery(event);
 

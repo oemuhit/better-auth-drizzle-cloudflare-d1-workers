@@ -1,4 +1,7 @@
+import { requireAdmin } from "~~/server/utils/admin";
+
 export default defineEventHandler(async (event) => {
+    await requireAdmin(event);
     const contentType = getRequestHeader(event, 'content-type');
     const contentLength = getRequestHeader(event, 'content-length');
     console.log(`[Upload] Request received. Content-Type: ${contentType}, Content-Length: ${contentLength}`);

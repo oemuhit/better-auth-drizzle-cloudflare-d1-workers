@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { admin } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { useDb } from "./db";
 import * as schema from "../db/schema";
@@ -22,6 +23,9 @@ export const serverAuth = (event: any) => {
 
   const auth = betterAuth({
     trustedOrigins: ["http://localhost:3000", siteUrl],
+    plugins: [
+        admin() as any
+    ],
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: {

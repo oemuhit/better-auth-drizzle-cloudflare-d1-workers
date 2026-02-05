@@ -114,3 +114,21 @@ export const addressSchema = z.object({
 });
 
 export type AddressRequest = z.infer<typeof addressSchema>;
+
+// ============================================================================
+// TICKET SCHEMAS
+// ============================================================================
+
+export const createTicketSchema = z.object({
+    subject: z.string().min(5, "Konu en az 5 karakter olmalıdır").max(100),
+    category: z.enum(["order", "payment", "account", "technical", "other"]).default("other"),
+    orderId: z.string().optional().nullable(),
+    message: z.string().min(10, "Mesaj en az 10 karakter olmalıdır"),
+});
+
+export const ticketMessageSchema = z.object({
+    message: z.string().min(1, "Mesaj boş olamaz"),
+});
+
+export type CreateTicketRequest = z.infer<typeof createTicketSchema>;
+export type TicketMessageRequest = z.infer<typeof ticketMessageSchema>;

@@ -42,13 +42,21 @@ export default defineEventHandler(async (event) => {
       );
     }
 
+    // Determine sort column
+    let sortColumn: any = product.createdAt;
+    if (sortBy === "price") {
+      sortColumn = product.basePrice;
+    } else if (sortBy === "title") {
+      sortColumn = product.title;
+    } else if (sortBy in product) {
+      sortColumn = product[sortBy as keyof typeof product];
+    }
+
     // Get products with relations
     const products = await db.query.product.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
       orderBy: [
-        sortOrder === "asc"
-          ? asc(product[sortBy as keyof typeof product] || product.createdAt)
-          : desc(product[sortBy as keyof typeof product] || product.createdAt),
+        sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn),
       ],
       limit,
       offset,
