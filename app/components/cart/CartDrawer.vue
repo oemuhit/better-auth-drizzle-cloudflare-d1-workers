@@ -80,7 +80,7 @@ watch(isOpen, async (open) => {
       </div>
 
       <!-- Footer -->
-      <div v-if="!isEmpty" class="border-t pt-4 space-y-4 px-4">
+      <div v-if="!isEmpty" class="border-t pt-4 space-y-4 px-4 mb-4">
         <CartSummary :subtotal="subtotal" />
 
         <div class="grid gap-2">
@@ -89,7 +89,7 @@ watch(isOpen, async (open) => {
               Siparişi Tamamla
             </NuxtLink>
           </Button>
-          <Button variant="outline" class="w-full" @click="isOpen = false">
+          <Button variant="outline"  class="w-full" @click="isOpen = false">
             <NuxtLink to="/cart" class="w-full"> Sepeti Görüntüle </NuxtLink>
           </Button>
         </div>

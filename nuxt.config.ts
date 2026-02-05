@@ -22,13 +22,15 @@ export default defineNuxtConfig({
     // Use Cloudflare for production build
     preset: "cloudflare_module",
 
+    experimental: {},
+
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
     },
     runtimeConfig: {
-      bodySizeLimit: '10mb'
-    }
+      bodySizeLimit: "10mb",
+    },
   },
 
   build: {

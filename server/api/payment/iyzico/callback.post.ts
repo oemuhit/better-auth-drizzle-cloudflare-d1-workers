@@ -73,27 +73,21 @@ export default defineEventHandler(async (event) => {
       })
       .where(eq(order.id, existingOrder.id));
 
-    // 2. Decrease stock quantity for variants
-    for (const item of existingOrder.items) {
-      if (item.productVariantId) {
-        const variant = await db.query.productVariant.findFirst({
-          where: eq(productVariant.id, item.productVariantId),
-        });
-        if (variant) {
-          await db
-            .update(productVariant)
-            .set({
-              stockQuantity: Math.max(
-                0,
-                (variant.stockQuantity || 0) - item.quantity,
-              ),
-            })
-            .where(eq(productVariant.id, item.productVariantId));
-        }
-      }
+    // 2. Confirm stock reservation (D1-based) - decrements stock atomically
+    const { confirmReservation } = await import("../../../utils/stockReservation");
+    const conversationId = result.conversationId;
+
+    if (conversationId) {
+      await confirmReservation(event, conversationId);
     }
 
-    // 3. Clear the user's cart
+    // 3. Clear the user's cart (D1 for logged-in, KV for guests)
+    const cartId = getCookie(event, "cart_id");
+    const guestCartsKv = event.context.cloudflare?.env?.GUEST_CARTS;
+    if (guestCartsKv && cartId) {
+      await guestCartsKv.delete(`cart:${cartId}`);
+    }
+
     const userCart = await db.query.cart.findFirst({
       where: eq(cart.userId, existingOrder.userId),
     });

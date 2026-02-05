@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { useDb } from "../../../utils/db";
 import { serverAuth } from "../../../utils/auth";
 import {
@@ -126,6 +126,36 @@ export default defineEventHandler(async (event) => {
     // Total is just subtotal (tax is already included in prices)
     const total = subtotal;
 
+    // Generate conversation ID for tracking
+    const conversationId = generateConversationId();
+
+    // --- STOCK RESERVATION (D1-based) ---
+    const { reserveStock, releaseReservation } = await import("../../../utils/stockReservation");
+    const reservedVariants: string[] = [];
+
+    try {
+      for (const item of userCart.items) {
+        const variantId = item.productVariantId;
+        if (!variantId) continue;
+
+        const result = await reserveStock(event, conversationId, variantId, item.quantity);
+        if (!result.success) {
+          throw createError({
+            statusCode: 400,
+            statusMessage: `${item.product.title} için stok yetersiz: ${result.error}`,
+          });
+        }
+        reservedVariants.push(variantId);
+      }
+    } catch (err: any) {
+      // Rollback reservations on failure
+      if (reservedVariants.length > 0) {
+        await releaseReservation(event, conversationId);
+      }
+      throw err;
+    }
+    // -------------------------
+
     // Get client IP
     const clientIp =
       getHeader(event, "x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -175,37 +205,71 @@ export default defineEventHandler(async (event) => {
       zipCode: billingAddr.postalCode || "34000",
     };
 
-    // Generate conversation ID for tracking
-    const conversationId = generateConversationId();
-
     // Build callback URL
     const siteUrl = config.public.siteUrl;
     const callbackUrl = `${siteUrl}/api/payment/iyzico/callback`;
 
-    // Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    // Check for existing pending order for this user
+    let existingPendingOrder = await db.query.order.findFirst({
+      where: and(
+        eq(order.userId, userId),
+        eq(order.status, "pending"),
+        eq(order.paymentStatus, "not_paid")
+      ),
+      with: {
+        items: true,
+      },
+    });
 
-    // Create the order sequentially (D1 transaction emulation issue fix)
-    // 1. Create order
-    const [newOrder] = await db
-      .insert(order)
-      .values({
-        orderNumber,
-        userId,
-        status: "pending",
-        paymentStatus: "not_paid",
-        billingAddressId: billingAddr.id,
-        shippingAddressId: shippingAddr.id,
-        subtotal,
-        taxTotal,
-        shippingTotal: 0,
-        discountTotal: 0,
-        total,
-        notes,
-      })
-      .returning();
+    let activeOrder: typeof existingPendingOrder;
 
-    // 2. Create order items
+    if (existingPendingOrder) {
+      // Update existing pending order
+      await db
+        .update(order)
+        .set({
+          shippingAddressSnapshot: shippingAddr,
+          billingAddressSnapshot: billingAddr,
+          subtotal,
+          taxTotal,
+          shippingTotal: 0,
+          discountTotal: 0,
+          total,
+          notes,
+          updatedAt: new Date(),
+        })
+        .where(eq(order.id, existingPendingOrder.id));
+
+      // Delete old order items
+      await db.delete(orderItem).where(eq(orderItem.orderId, existingPendingOrder.id));
+
+      activeOrder = existingPendingOrder;
+    } else {
+      // Generate order number and create new order
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+      const [newOrder] = await db
+        .insert(order)
+        .values({
+          orderNumber,
+          userId,
+          status: "pending",
+          paymentStatus: "not_paid",
+          shippingAddressSnapshot: shippingAddr,
+          billingAddressSnapshot: billingAddr,
+          subtotal,
+          taxTotal,
+          shippingTotal: 0,
+          discountTotal: 0,
+          total,
+          notes,
+        })
+        .returning();
+
+      activeOrder = newOrder as unknown as typeof existingPendingOrder;
+    }
+
+    // Create order items (for both new and updated orders)
     for (const item of userCart.items) {
       const itemPrice =
         item.productVariant?.price ?? item.product.basePrice ?? 0;
@@ -224,7 +288,7 @@ export default defineEventHandler(async (event) => {
       }
 
       await db.insert(orderItem).values({
-        orderId: newOrder.id,
+        orderId: activeOrder!.id,
         productId: item.productId,
         productVariantId: item.productVariantId,
         productTitle: item.product.title,
@@ -245,7 +309,7 @@ export default defineEventHandler(async (event) => {
       price: formatIyzicoPrice(total),
       paidPrice: formatIyzicoPrice(total),
       currency: IYZICO.CURRENCY.TRY,
-      basketId: newOrder.id, // Use order ID as basket ID
+      basketId: activeOrder!.id, // Use order ID as basket ID
       paymentGroup: IYZICO.PAYMENT_GROUP.PRODUCT,
       callbackUrl,
       enabledInstallments: [1, 2, 3, 6, 9, 12],
@@ -276,7 +340,7 @@ export default defineEventHandler(async (event) => {
         checkoutFormContent: result.checkoutFormContent,
         paymentPageUrl: result.paymentPageUrl,
         conversationId,
-        basketId: newOrder.id,
+        basketId: activeOrder!.id,
         total,
       },
     };

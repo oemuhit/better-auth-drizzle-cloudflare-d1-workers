@@ -2,21 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { serverAuth } from "../../utils/auth";
 import { customerAddress } from "../../db/schema";
-import { z } from "zod";
-
-const addressSchema = z.object({
-    firstName: z.string().min(1, "İsim gerekli"),
-    lastName: z.string().min(1, "Soyisim gerekli"),
-    addressLine1: z.string().min(5, "Adres çok kısa"),
-    addressLine2: z.string().optional(),
-    city: z.string().min(2, "Şehir gerekli"),
-    state: z.string().optional(),
-    postalCode: z.string().min(5, "Posta kodu gerekli"),
-    phone: z.string().min(10, "Telefon numarası geçerli değil"),
-    isShipping: z.boolean().default(true),
-    isBilling: z.boolean().default(true),
-    isDefault: z.boolean().default(false),
-});
+import { addressSchema } from "../../utils/validation";
 
 export default defineEventHandler(async (event) => {
     const db = useDb(event);
@@ -31,8 +17,9 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await readBody(event);
+    console.log(body)
     const result = addressSchema.safeParse(body);
-
+console.warn(result)
     if (!result.success) {
         throw createError({
             statusCode: 400,

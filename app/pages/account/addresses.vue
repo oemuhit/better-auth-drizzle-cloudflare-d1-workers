@@ -37,21 +37,11 @@ function openDeleteDialog(id: string) {
   isDeleteDialogOpen.value = true;
 }
 
-const addressSchema = toTypedSchema(z.object({
-  firstName: z.string().min(1, "İsim gerekli"),
-  lastName: z.string().min(1, "Soyisim gerekli"),
-  addressLine1: z.string().min(5, "Adres çok kısa"),
-  addressLine2: z.string().optional(),
-  city: z.string().min(2, "Şehir gerekli"),
-  state: z.string().min(2, "İlçe/Eyalet gerekli"),
-  postalCode: z.string().min(5, "Posta kodu en az 5 haneli olmalıdır"),
-  phone: z.string().min(10, "Geçerli bir telefon numarası girin (örn: 05xx)"),
-  isShipping: z.boolean().default(true),
-  isBilling: z.boolean().default(true),
-  isDefault: z.boolean().default(false),
-}));
+import { addressSchema as rawAddressSchema } from "../../../server/utils/validation";
 
-const { handleSubmit, resetForm, setValues, errors, defineField } = useForm({
+const addressSchema = toTypedSchema(rawAddressSchema);
+
+const { handleSubmit, resetForm, setValues, errors, defineField, meta } = useForm({
   validationSchema: addressSchema,
   initialValues: {
     firstName: "",
@@ -62,6 +52,7 @@ const { handleSubmit, resetForm, setValues, errors, defineField } = useForm({
     state: "",
     postalCode: "",
     phone: "",
+    countryCode: "TR",
     isShipping: true,
     isBilling: true,
     isDefault: false,
@@ -76,6 +67,7 @@ const [city] = defineField('city');
 const [state] = defineField('state');
 const [postalCode] = defineField('postalCode');
 const [phone] = defineField('phone');
+const [countryCode] = defineField('countryCode');
 const [isShipping] = defineField('isShipping');
 const [isBilling] = defineField('isBilling');
 const [isDefault] = defineField('isDefault');
@@ -249,7 +241,7 @@ useHead({
 
             <div class="flex justify-end gap-3 pt-4 border-t">
               <Button type="button" variant="outline" @click="handleCancel" :disabled="isSubmitting" class="rounded-full">İptal</Button>
-              <Button type="submit" :disabled="isSubmitting" class="rounded-full px-8">
+              <Button type="submit" :disabled="isSubmitting || !meta.valid" class="rounded-full px-8">
                 <Loader2 v-if="isSubmitting" class="h-4 w-4 mr-2 animate-spin" />
                 {{ editingAddress ? 'Güncelle' : 'Kaydet' }}
               </Button>

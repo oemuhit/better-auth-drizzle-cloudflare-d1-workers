@@ -7,6 +7,7 @@ import {
   cartItem,
   product,
   productVariant,
+  customerAddress,
 } from "../../db/schema";
 import { serverAuth } from "../../utils/auth";
 
@@ -81,8 +82,11 @@ export default defineEventHandler(async (event) => {
         productVariantId: item.productVariantId,
         productTitle: item.product.title,
         variantInfo: item.productVariant
-          ? `${item.productVariant.color || ""} ${item.productVariant.size || ""}`.trim() ||
-            null
+          ? [
+              (item.productVariant as any).color ? `Renk: ${(item.productVariant as any).color}` : null,
+              (item.productVariant as any).size ? `Beden: ${(item.productVariant as any).size}` : null,
+              item.productVariant.sku ? `SKU: ${item.productVariant.sku}` : null,
+            ].filter(Boolean).join(", ") || null
           : null,
         quantity: item.quantity,
         price,
@@ -98,6 +102,24 @@ export default defineEventHandler(async (event) => {
     const discountTotal = body.discountTotal || 0;
     const total = subtotal + taxTotal + shippingTotal - discountTotal;
 
+    // Get addresses for snapshotting
+    const shippingAddr = await db.query.customerAddress.findFirst({
+      where: eq(customerAddress.id, body.shippingAddressId),
+    });
+
+    if (!shippingAddr) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Shipping address not found",
+      });
+    }
+
+    const billingAddr = body.billingAddressId && body.billingAddressId !== body.shippingAddressId
+      ? await db.query.customerAddress.findFirst({
+          where: eq(customerAddress.id, body.billingAddressId),
+        })
+      : shippingAddr;
+
     // Create order
     const [newOrder] = await db
       .insert(order)
@@ -107,8 +129,8 @@ export default defineEventHandler(async (event) => {
         status: "pending",
         fulfillmentStatus: "open",
         paymentStatus: "not_paid",
-        billingAddressId: body.billingAddressId || body.shippingAddressId,
-        shippingAddressId: body.shippingAddressId,
+        shippingAddressSnapshot: shippingAddr,
+        billingAddressSnapshot: billingAddr || shippingAddr,
         subtotal,
         taxTotal,
         shippingTotal,
@@ -140,8 +162,6 @@ export default defineEventHandler(async (event) => {
             productVariant: true,
           },
         },
-        billingAddress: true,
-        shippingAddress: true,
       },
     });
 

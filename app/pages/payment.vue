@@ -48,7 +48,27 @@ onMounted(() => {
   isLoading.value = false;
 });
 
+
 function injectCheckoutForm() {
+  const container = document.getElementById("iyzipay-checkout-form");
+  if (!container || !paymentData.value?.checkoutFormContent) return;
+
+  container.innerHTML = paymentData.value.checkoutFormContent;
+
+  const scripts = container.getElementsByTagName("script");
+  Array.from(scripts).forEach((oldScript) => {
+    const newScript = document.createElement("script");
+    [...oldScript.attributes].forEach(attr =>
+      newScript.setAttribute(attr.name, attr.value)
+    );
+    newScript.textContent = oldScript.textContent;
+    oldScript.replaceWith(newScript);
+  });
+
+  formLoaded.value = true;
+}
+
+function injectCheckoutForm2() {
   const container = document.getElementById("iyzipay-checkout-form");
   if (!container || !paymentData.value?.checkoutFormContent) return;
 
@@ -139,7 +159,7 @@ function formatPrice(price: number) {
         <CardContent>
           <!-- iyzico responsive form will be embedded here -->
           <!-- IMPORTANT: This div id must be "iyzipay-checkout-form" for embedded mode -->
-          <div id="iyzipay-checkout-form" class="min-h-[500px] relative">
+          <div id="iyzipay-checkout-form"  class="min-h-[500px] relative">
             <!-- Loading placeholder (hidden when form loads) -->
             <div
               v-if="!formLoaded"

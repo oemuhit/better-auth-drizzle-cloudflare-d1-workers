@@ -8,13 +8,6 @@ export default defineEventHandler(async (event) => {
   const auth = serverAuth(event);
   const session = await auth.api.getSession({ headers: event.headers });
 
-  if (!session?.user) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "Unauthorized",
-    });
-  }
-
   const query = getQuery(event);
   const cartItemId = query.cartItemId as string;
 
@@ -26,61 +19,99 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // Find user's cart
-    const userCart = await db.query.cart.findFirst({
-      where: eq(cart.userId, session.user.id),
-    });
-
-    if (!userCart) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Cart not found",
+    if (session?.user) {
+      // Logged-in user: remove from D1
+      const userCart = await db.query.cart.findFirst({
+        where: eq(cart.userId, session.user.id),
       });
-    }
 
-    // Verify item belongs to user's cart and delete
-    const item = await db.query.cartItem.findFirst({
-      where: and(eq(cartItem.id, cartItemId), eq(cartItem.cartId, userCart.id)),
-    });
+      if (!userCart) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: "Cart not found",
+        });
+      }
 
-    if (!item) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Cart item not found",
+      const item = await db.query.cartItem.findFirst({
+        where: and(eq(cartItem.id, cartItemId), eq(cartItem.cartId, userCart.id)),
       });
-    }
 
-    await db.delete(cartItem).where(eq(cartItem.id, cartItemId));
+      if (!item) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: "Cart item not found",
+        });
+      }
 
-    // Return updated cart summary
-    const updatedCart = await db.query.cart.findFirst({
-      where: eq(cart.id, userCart.id),
-      with: {
-        items: {
-          with: {
-            productVariant: true,
+      await db.delete(cartItem).where(eq(cartItem.id, cartItemId));
+
+      // Return updated cart summary
+      const updatedCart = await db.query.cart.findFirst({
+        where: eq(cart.id, userCart.id),
+        with: {
+          items: {
+            with: {
+              productVariant: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    const subtotal =
-      updatedCart?.items.reduce((sum, item) => {
-        const price = item.productVariant?.price || 0;
-        return sum + price * item.quantity;
-      }, 0) || 0;
+      const subtotal =
+        updatedCart?.items.reduce((sum, item) => {
+          const price = item.productVariant?.price || 0;
+          return sum + price * item.quantity;
+        }, 0) || 0;
 
-    const itemCount =
-      updatedCart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
+      const itemCount =
+        updatedCart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
-    return {
-      success: true,
-      message: "Item removed from cart",
-      data: {
-        subtotal,
-        itemCount,
-      },
-    };
+      return {
+        success: true,
+        message: "Item removed from cart",
+        data: { subtotal, itemCount },
+      };
+    } else {
+      // Guest user: remove from KV
+      const guestCartId = getCookie(event, "cart_id");
+      const kv = event.context.cloudflare?.env?.GUEST_CARTS;
+
+      if (!kv || !guestCartId) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: "Guest cart not found",
+        });
+      }
+
+      const guestCartRaw = await kv.get(`cart:${guestCartId}`);
+      if (!guestCartRaw) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: "Cart not found",
+        });
+      }
+
+      const guestCart = JSON.parse(guestCartRaw);
+      const itemIndex = guestCart.items.findIndex((i: any) => i.id === cartItemId);
+
+      if (itemIndex === -1) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: "Cart item not found",
+        });
+      }
+
+      guestCart.items.splice(itemIndex, 1);
+      await kv.put(`cart:${guestCartId}`, JSON.stringify(guestCart), { expirationTtl: 60 * 60 * 24 * 7 });
+
+      const itemCount = guestCart.items.reduce((sum: number, i: any) => sum + i.quantity, 0);
+
+      return {
+        success: true,
+        message: "Item removed from cart",
+        data: { subtotal: 0, itemCount },
+      };
+    }
   } catch (error: any) {
     if (error.statusCode) throw error;
     throw createError({

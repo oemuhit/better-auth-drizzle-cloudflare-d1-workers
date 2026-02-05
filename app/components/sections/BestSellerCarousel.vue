@@ -20,8 +20,8 @@ const scroll = (direction: 'left' | 'right') => {
 
 <template>
   <section class="py-24 bg-white overflow-hidden">
+    <!-- Header stays in container -->
     <div class="container mx-auto px-4">
-      <!-- Section Header -->
       <div class="flex items-end justify-between mb-12 border-b border-gray-100 pb-6">
         <motion.h2 
            class="text-4xl md:text-5xl font-serif text-gray-900"
@@ -40,36 +40,40 @@ const scroll = (direction: 'left' | 'right') => {
           <ArrowRight class="h-5 w-5 transition-transform group-hover:translate-x-2" />
         </NuxtLink>
       </div>
+    </div>
 
-      <!-- Carousel Container -->
-      <div class="relative group">
-        <!-- Navigation Buttons -->
-        <button 
-          @click="scroll('left')"
-          class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-20 h-10 w-10 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-400 hover:text-primary opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
-        >
-          <ChevronLeft class="h-6 w-6" />
-        </button>
-        
-        <button 
-          @click="scroll('right')"
-          class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-20 h-10 w-10 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-400 hover:text-primary opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
-        >
-          <ChevronRight class="h-6 w-6" />
-        </button>
+    <!-- Carousel is full-width -->
+    <div class="relative w-full">
+      <!-- Navigation Buttons -->
+      <button 
+        type="button"
+        @click.stop.prevent="scroll('left')"
+        class="absolute left-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-600 hover:text-primary hover:bg-gray-50 transition-all duration-300 cursor-pointer"
+        aria-label="Previous"
+      >
+        <ChevronLeft class="h-6 w-6" />
+      </button>
+      
+      <button 
+        type="button"
+        @click.stop.prevent="scroll('right')"
+        class="absolute right-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-600 hover:text-primary hover:bg-gray-50 transition-all duration-300 cursor-pointer"
+        aria-label="Next"
+      >
+        <ChevronRight class="h-6 w-6" />
+      </button>
 
-        <!-- Scrollable Wrapper -->
+      <!-- Scrollable Wrapper - Full width -->
+      <div 
+        ref="scrollContainer"
+        class="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth pb-8 px-8 md:px-16"
+      >
         <div 
-          ref="scrollContainer"
-          class="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-8"
+          v-for="(product, i) in products" 
+          :key="product.id"
+          class="min-w-[220px] md:min-w-[280px] lg:min-w-[320px] flex-shrink-0"
         >
-          <div 
-            v-for="(product, i) in products" 
-            :key="product.id"
-            class="min-w-[200px] md:min-w-[240px] lg:min-w-[280px] flex-shrink-0"
-          >
-            <DrinkifyProductCard :product="product" />
-          </div>
+          <DrinkifyProductCard :product="product" />
         </div>
       </div>
     </div>

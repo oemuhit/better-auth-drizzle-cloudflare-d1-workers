@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { useDb } from "../../utils/db";
-import { cart, cartItem } from "../../db/schema";
+import { cart, cartItem, product, productVariant } from "../../db/schema";
 import { serverAuth } from "../../utils/auth";
 
 export default defineEventHandler(async (event) => {
@@ -9,10 +9,60 @@ export default defineEventHandler(async (event) => {
   const session = await auth.api.getSession({ headers: event.headers });
 
   if (!session?.user) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "Unauthorized",
-    });
+    // Guest Cart Logic
+    const cartId = getCookie(event, "cart_id");
+    const kv = event.context.cloudflare?.env?.GUEST_CARTS;
+    
+    if (kv && cartId) {
+      const guestCartRaw = await kv.get(`cart:${cartId}`);
+      if (guestCartRaw) {
+        const guestCart = JSON.parse(guestCartRaw);
+        
+        // Enrich with product data
+        const enrichedItems = [];
+        let subtotal = 0;
+        
+        for (const item of guestCart.items) {
+          const productData = await db.query.product.findFirst({
+            where: eq(product.id, item.productId),
+            with: {
+              variants: true,
+              images: true
+            }
+          });
+          
+          if (productData) {
+            const variant = productData.variants.find(v => v.id === item.productVariantId);
+            const price = variant?.price ?? productData.basePrice ?? 0;
+            const itemTotal = price * item.quantity;
+            subtotal += itemTotal;
+            
+            enrichedItems.push({
+              ...item,
+              price,
+              itemTotal,
+              product: productData,
+              productVariant: variant || null
+            });
+          }
+        }
+        
+        return {
+          success: true,
+          data: {
+            id: cartId,
+            items: enrichedItems,
+            subtotal,
+            itemCount: enrichedItems.reduce((sum, i) => sum + i.quantity, 0)
+          }
+        };
+      }
+    }
+    
+    return {
+      success: true,
+      data: { id: "guest", items: [], subtotal: 0, itemCount: 0 }
+    };
   }
 
   try {
@@ -50,8 +100,8 @@ export default defineEventHandler(async (event) => {
 
     // Calculate totals
     const itemsWithTotals = userCart.items.map((item) => {
-      const price = item.productVariant?.price || 0;
-      const compareAtPrice = item.productVariant?.compareAtPrice;
+      const price = item.productVariant?.price ?? item.product?.basePrice ?? 0;
+      const compareAtPrice = item.productVariant?.compareAtPrice ?? item.product?.compareAtPrice;
       const itemTotal = price * item.quantity;
 
       return {

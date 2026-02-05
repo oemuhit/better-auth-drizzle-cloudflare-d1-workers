@@ -70,3 +70,46 @@ export const createProductRequestSchema = productSchema.extend({
 });
 
 export type CreateProductRequest = z.infer<typeof createProductRequestSchema>;
+
+// ============================================================================
+// ADDRESS SCHEMAS
+// ============================================================================
+
+export const addressSchema = z.object({
+    firstName: z.string()
+        .trim()
+        .min(1, "İsim gereklidir")
+        .regex(/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/, "İsim sadece harflerden oluşmalıdır"),
+    lastName: z.string()
+        .trim()
+        .min(1, "Soyisim gereklidir")
+        .regex(/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/, "Soyisim sadece harflerden oluşmalıdır"),
+    addressLine1: z.string()
+        .trim()
+        .min(5, "Adres en az 5 karakter olmalıdır"),
+    addressLine2: z.string().trim().default(""),
+    city: z.string()
+        .trim()
+        .min(2, "Şehir en az 2 karakter olmalıdır")
+        .regex(/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/, "Şehir sadece harflerden oluşmalıdır"),
+    state: z.string()
+        .trim()
+        .min(2, "İlçe en az 2 karakter olmalıdır")
+        .regex(/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/, "İlçe sadece harflerden oluşmalıdır"),
+    postalCode: z.string()
+        .trim()
+        .min(5, "Posta kodu en az 5 haneli olmalıdır")
+        .max(10, "Posta kodu en fazla 10 haneli olmalıdır")
+        .regex(/^[0-9]+$/, "Sadece rakam girmelisiniz"),
+    countryCode: z.string().trim().min(2).max(2).default("TR"),
+    phone: z.string()
+        .trim()
+        .min(10, "Telefon numarası en az 10 haneli olmalıdır")
+        .max(11, "Telefon numarası en fazla 11 haneli olmalıdır")
+        .regex(/^[0-9]+$/, "Sadece rakam girmelisiniz"),
+    isShipping: z.boolean().default(true),
+    isBilling: z.boolean().default(true),
+    isDefault: z.boolean().default(false),
+});
+
+export type AddressRequest = z.infer<typeof addressSchema>;

@@ -185,7 +185,7 @@ function getAddressDisplay(address: any) {
             </CardHeader>
             <CardContent>
               <p class="text-sm text-muted-foreground">
-                {{ getAddressDisplay(order.shippingAddress) }}
+                {{ getAddressDisplay(order.shippingAddressSnapshot) }}
               </p>
             </CardContent>
           </Card>
@@ -200,7 +200,7 @@ function getAddressDisplay(address: any) {
             </CardHeader>
             <CardContent>
               <p class="text-sm text-muted-foreground">
-                {{ getAddressDisplay(order.billingAddress) }}
+                {{ getAddressDisplay(order.billingAddressSnapshot) }}
               </p>
             </CardContent>
           </Card>

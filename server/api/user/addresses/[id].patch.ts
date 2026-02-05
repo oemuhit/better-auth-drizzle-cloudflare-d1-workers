@@ -2,21 +2,8 @@ import { eq, and } from "drizzle-orm";
 import { useDb } from "../../../utils/db";
 import { serverAuth } from "../../../utils/auth";
 import { customerAddress } from "../../../db/schema";
-import { z } from "zod";
-
-const updateAddressSchema = z.object({
-    firstName: z.string().min(1, "İsim gerekli"),
-    lastName: z.string().min(1, "Soyisim gerekli"),
-    addressLine1: z.string().min(5, "Adres çok kısa"),
-    addressLine2: z.string().optional(),
-    city: z.string().min(2, "Şehir gerekli"),
-    state: z.string().optional(),
-    postalCode: z.string().min(5, "Posta kodu gerekli"),
-    phone: z.string().min(10, "Telefon numarası geçerli değil"),
-    isShipping: z.boolean().optional(),
-    isBilling: z.boolean().optional(),
-    isDefault: z.boolean().optional(),
-});
+import { addressSchema } from "../../../utils/validation";
+const updateAddressSchema = addressSchema.partial();
 
 export default defineEventHandler(async (event) => {
     const db = useDb(event);

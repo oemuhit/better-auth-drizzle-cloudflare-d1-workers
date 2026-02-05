@@ -23,8 +23,6 @@ export default defineEventHandler(async (event) => {
                         productVariant: true,
                     },
                 },
-                billingAddress: true,
-                shippingAddress: true,
                 user: {
                     columns: {
                         id: true,

@@ -9,10 +9,11 @@ export default defineEventHandler(async (event) => {
   const session = await auth.api.getSession({ headers: event.headers });
 
   if (!session?.user) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "Unauthorized",
-    });
+    // Guest Cart Logic
+    const cartId = getCookie(event, "cart_id") || crypto.randomUUID();
+    setCookie(event, "cart_id", cartId, { maxAge: 60 * 60 * 24 * 7 }); // 1 week
+    
+    // Proceed with guest logic below
   }
 
   const body = await readBody(event);
@@ -61,80 +62,101 @@ export default defineEventHandler(async (event) => {
         });
       }
 
-      // Check stock
-      if (variant.stockQuantity < quantity) {
+      // Check available stock (considering active reservations)
+      const { getAvailableStock } = await import("../../utils/stockReservation");
+      const availableStock = await getAvailableStock(event, variant.id);
+      
+      if (availableStock < quantity) {
         throw createError({
           statusCode: 400,
-          statusMessage: "Not enough stock available",
+          statusMessage: `Stok yetersiz. Mevcut: ${availableStock}`,
         });
       }
     }
 
-    // Find or create cart
-    let userCart = await db.query.cart.findFirst({
-      where: eq(cart.userId, session.user.id),
-    });
-
-    if (!userCart) {
-      const [newCart] = await db
-        .insert(cart)
-        .values({ userId: session.user.id })
-        .returning();
-      userCart = newCart;
-    }
-
-    // Check if item already in cart
-    const existingItem = await db.query.cartItem.findFirst({
-      where: and(
-        eq(cartItem.cartId, userCart.id),
-        eq(cartItem.productId, body.productId),
-        body.productVariantId
-          ? eq(cartItem.productVariantId, body.productVariantId)
-          : undefined,
-      ),
-    });
-
-    if (existingItem) {
-      // Update quantity
-      const newQuantity = existingItem.quantity + quantity;
-
-      await db
-        .update(cartItem)
-        .set({ quantity: newQuantity })
-        .where(eq(cartItem.id, existingItem.id));
-    } else {
-      // Add new item
-      await db.insert(cartItem).values({
-        cartId: userCart.id,
-        productId: body.productId,
-        productVariantId: body.productVariantId || null,
-        quantity,
+    if (session?.user) {
+      // Find or create cart in D1
+      let userCart = await db.query.cart.findFirst({
+        where: eq(cart.userId, session.user.id),
       });
+
+      if (!userCart) {
+        const [newCart] = await db
+          .insert(cart)
+          .values({ userId: session.user.id })
+          .returning();
+        userCart = newCart;
+      }
+
+      // Check if item already in cart
+      const existingItem = await db.query.cartItem.findFirst({
+        where: and(
+          eq(cartItem.cartId, userCart.id),
+          eq(cartItem.productId, body.productId),
+          body.productVariantId
+            ? eq(cartItem.productVariantId, body.productVariantId)
+            : undefined,
+        ),
+      });
+
+      if (existingItem) {
+        await db
+          .update(cartItem)
+          .set({ quantity: existingItem.quantity + quantity })
+          .where(eq(cartItem.id, existingItem.id));
+      } else {
+        await db.insert(cartItem).values({
+          cartId: userCart.id,
+          productId: body.productId,
+          productVariantId: body.productVariantId || null,
+          quantity,
+        });
+      }
+
+      // Return updated count
+      const updatedCart = await db.query.cart.findFirst({
+        where: eq(cart.id, userCart.id),
+        with: { items: true },
+      });
+      return {
+        success: true,
+        data: { itemCount: updatedCart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0 },
+      };
+    } else {
+      // Guest Cart Logic with KV
+      const cartId = getCookie(event, "cart_id");
+      const kv = event.context.cloudflare?.env?.GUEST_CARTS;
+      
+      if (kv) {
+        const guestCartRaw = await kv.get(`cart:${cartId}`);
+        const guestCart = guestCartRaw ? JSON.parse(guestCartRaw) : { items: [] };
+        
+        const existingItemIndex = guestCart.items.findIndex((item: any) => 
+          item.productId === body.productId && item.productVariantId === (body.productVariantId || null)
+        );
+
+        if (existingItemIndex > -1) {
+          guestCart.items[existingItemIndex].quantity += quantity;
+        } else {
+          guestCart.items.push({
+            id: crypto.randomUUID(),
+            productId: body.productId,
+            productVariantId: body.productVariantId || null,
+            quantity
+          });
+        }
+
+        await kv.put(`cart:${cartId}`, JSON.stringify(guestCart), { expirationTtl: 60 * 60 * 24 * 7 });
+        
+        return {
+          success: true,
+          data: { itemCount: guestCart.items.reduce((sum: number, item: any) => sum + item.quantity, 0) },
+        };
+      } else {
+        // Fallback for local dev without KV (could use session/cookie only)
+        return { success: false, message: "KV not available" };
+      }
     }
-
-    // Return updated cart
-    const updatedCart = await db.query.cart.findFirst({
-      where: eq(cart.id, userCart.id),
-      with: {
-        items: {
-          with: {
-            product: true,
-            productVariant: true,
-          },
-        },
-      },
-    });
-
-    const itemCount =
-      updatedCart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
-
-    return {
-      success: true,
-      message: "Item added to cart",
-      data: {
-        itemCount,
-      },
-    };
   } catch (error: any) {
     if (error.statusCode) throw error;
     throw createError({

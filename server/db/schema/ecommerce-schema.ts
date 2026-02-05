@@ -331,14 +331,12 @@ export const order = sqliteTable(
     })
       .default("not_paid")
       .notNull(),
-    billingAddressId: text("billing_address_id").references(
-      () => customerAddress.id,
-      { onDelete: "set null" },
-    ),
-    shippingAddressId: text("shipping_address_id").references(
-      () => customerAddress.id,
-      { onDelete: "set null" },
-    ),
+    shippingAddressSnapshot: text("shipping_address_snapshot", {
+      mode: "json",
+    }).$type<CustomerAddress>(),
+    billingAddressSnapshot: text("billing_address_snapshot", {
+      mode: "json",
+    }).$type<CustomerAddress>(),
     subtotal: real("subtotal").notNull().default(0),
     taxTotal: real("tax_total").notNull().default(0),
     shippingTotal: real("shipping_total").notNull().default(0),
@@ -526,16 +524,6 @@ export const orderRelations = relations(order, ({ one, many }) => ({
     fields: [order.userId],
     references: [user.id],
   }),
-  billingAddress: one(customerAddress, {
-    fields: [order.billingAddressId],
-    references: [customerAddress.id],
-    relationName: "billingAddress",
-  }),
-  shippingAddress: one(customerAddress, {
-    fields: [order.shippingAddressId],
-    references: [customerAddress.id],
-    relationName: "shippingAddress",
-  }),
   items: many(orderItem),
 }));
 
@@ -644,3 +632,43 @@ export type CartItem = typeof cartItem.$inferSelect;
 export type NewCartItem = typeof cartItem.$inferInsert;
 export type AttributeTemplate = typeof attributeTemplate.$inferSelect;
 export type NewAttributeTemplate = typeof attributeTemplate.$inferInsert;
+
+// ============================================================================
+// STOCK RESERVATIONS - Prevents overselling during checkout
+// ============================================================================
+export const stockReservation = sqliteTable(
+  "stock_reservation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    orderId: text("order_id").notNull(),
+    productVariantId: text("product_variant_id")
+      .notNull()
+      .references(() => productVariant.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(1),
+    expiresAt: integer("expires_at").notNull(),
+    confirmed: integer("confirmed", { mode: "boolean" }).notNull().default(false),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer("updated_at")
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    index("idx_stock_reservation_expires").on(table.expiresAt),
+    index("idx_stock_reservation_order").on(table.orderId),
+    index("idx_stock_reservation_variant").on(table.productVariantId, table.confirmed),
+  ]
+);
+
+export const stockReservationRelations = relations(stockReservation, ({ one }) => ({
+  productVariant: one(productVariant, {
+    fields: [stockReservation.productVariantId],
+    references: [productVariant.id],
+  }),
+}));
+
+export type StockReservation = typeof stockReservation.$inferSelect;
+export type NewStockReservation = typeof stockReservation.$inferInsert;

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { customerAddress } from "../../db/schema";
 import { serverAuth } from "../../utils/auth";
+import { addressSchema } from "../../utils/validation";
 
 export default defineEventHandler(async (event) => {
   const db = useDb(event);
@@ -16,40 +17,32 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody(event);
+  const result = addressSchema.safeParse(body);
 
-  // Validate required fields
-  if (!body.addressLine1 || !body.city || !body.postalCode) {
+  if (!result.success) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Address line 1, city, and postal code are required",
+      statusMessage: "Geçersiz veri",
+      data: result.error.format(),
     });
   }
 
   try {
+    const userId = session.user.id;
+
     // If this is set as default, unset other defaults
-    if (body.isDefault) {
+    if (result.data.isDefault) {
       await db
         .update(customerAddress)
         .set({ isDefault: false })
-        .where(eq(customerAddress.userId, session.user.id));
+        .where(eq(customerAddress.userId, userId));
     }
 
     const [newAddress] = await db
       .insert(customerAddress)
       .values({
-        userId: session.user.id,
-        firstName: body.firstName || null,
-        lastName: body.lastName || null,
-        addressLine1: body.addressLine1,
-        addressLine2: body.addressLine2 || null,
-        city: body.city,
-        state: body.state || null,
-        postalCode: body.postalCode,
-        countryCode: body.countryCode || "TR",
-        phone: body.phone || null,
-        isShipping: body.isShipping ?? true,
-        isBilling: body.isBilling ?? true,
-        isDefault: body.isDefault ?? false,
+        ...result.data,
+        userId,
       })
       .returning();
 

@@ -1,4 +1,4 @@
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { order } from "../../db/schema";
 import { serverAuth } from "../../utils/auth";
@@ -21,8 +21,13 @@ export default defineEventHandler(async (event) => {
   const offset = (page - 1) * limit;
 
   try {
+    // Only show orders that have been paid (exclude pending checkout orders)
     const orders = await db.query.order.findMany({
-      where: eq(order.userId, session.user.id),
+      where: and(
+        eq(order.userId, session.user.id),
+        // Exclude pending orders that haven't been paid
+        sql`NOT (${order.status} = 'pending' AND ${order.paymentStatus} = 'not_paid')`
+      ),
       orderBy: [desc(order.createdAt)],
       limit,
       offset,
@@ -37,8 +42,6 @@ export default defineEventHandler(async (event) => {
             productVariant: true,
           },
         },
-        billingAddress: true,
-        shippingAddress: true,
       },
     });
 
