@@ -6,7 +6,9 @@ import { toast } from "vue-sonner";
 import { ArrowLeft, Send, User, Lock, Loader2, Package } from "lucide-vue-next";
 import { Badge } from "@/components/ui/badge";
 import { authClient } from "@/lib/auth-client";
-import { useIntervalFn } from "@vueuse/core";
+import { useIntervalFn, useDocumentVisibility } from "@vueuse/core";
+
+const router = useRouter();
 
 definePageMeta({
   layout: "account",
@@ -26,10 +28,45 @@ const user = computed(() => session.value.data?.user);
 const { data: ticketData, refresh, pending } = await useFetch(`/api/tickets/${ticketId}`);
 const ticket = computed(() => ticketData.value?.data);
 
-// Poll for new messages every 5 seconds
-useIntervalFn(() => {
+// Track document visibility
+const visibility = useDocumentVisibility();
+
+// Track last message timestamp for inactivity detection
+const lastMessageCount = ref(ticket.value?.messages?.length || 0);
+const lastActivityTime = ref(Date.now());
+
+// 1 minutes in milliseconds
+const INACTIVITY_TIMEOUT = 1 * 60 * 1000;
+
+// Poll for new messages every 5 seconds, but only when tab is active
+const { pause, resume } = useIntervalFn(() => {
+  // Check for inactivity - redirect if no new messages for 3 minutes
+  if (Date.now() - lastActivityTime.value > INACTIVITY_TIMEOUT) {
+    router.push('/account/tickets');
+    return;
+  }
+  
   refresh();
 }, 5000);
+
+// Watch for new messages to reset activity timer
+watch(() => ticket.value?.messages?.length, (newCount, oldCount) => {
+  if (newCount !== oldCount) {
+    lastActivityTime.value = Date.now();
+    lastMessageCount.value = newCount || 0;
+  }
+});
+
+// Pause polling when tab is not visible
+watch(visibility, (current) => {
+  if (current === 'hidden') {
+    pause();
+  } else {
+    resume();
+    // Reset activity time when user comes back to tab
+    lastActivityTime.value = Date.now();
+  }
+});
 
 const formSchema = toTypedSchema(
   z.object({
@@ -142,11 +179,8 @@ const getCategoryLabel = (category: string) => {
     <Card class="flex-1 flex flex-col overflow-hidden min-h-0">
       <!-- Messages -->
       <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
-        <div v-if="pending" class="flex justify-center py-8">
-            <Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+    
         
-        <template v-else>
             <div v-for="(msg, index) in ticket?.messages" :key="msg.id" 
                 class="flex gap-3" 
                 :class="[msg.isAdmin ? 'flex-row' : 'flex-row-reverse']"
@@ -178,7 +212,11 @@ const getCategoryLabel = (category: string) => {
             <div v-if="ticket?.status === 'closed'" class="text-center py-4">
                 <Badge variant="secondary" class="mx-auto">Bu destek talebi kapatılmıştır.</Badge>
             </div>
-        </template>
+
+                <div v-if="pending" class="flex justify-center py-1">
+            <Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+
       </div>
 
       <!-- Reply Input -->
