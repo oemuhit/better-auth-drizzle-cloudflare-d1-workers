@@ -24,11 +24,17 @@ let updateTimeout: ReturnType<typeof setTimeout>;
 async function handleQuantityChange(newQuantity: number) {
   if (newQuantity < 1) return;
 
+  const previousQuantity = localQuantity.value;
   localQuantity.value = newQuantity;
 
   clearTimeout(updateTimeout);
   updateTimeout = setTimeout(async () => {
-    await updateQuantity(props.item.id, newQuantity);
+    try {
+      await updateQuantity(props.item.id, newQuantity);
+    } catch (error) {
+      // Rollback to previous quantity on error
+      localQuantity.value = previousQuantity;
+    }
   }, 500);
 }
 

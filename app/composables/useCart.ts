@@ -122,7 +122,7 @@ export function useCart() {
       return false;
     } catch (err: any) {
       setError(err.data?.statusMessage || err.message || "Failed to update cart");
-      return false;
+      throw err; // Re-throw to allow caller to handle rollback
     } finally {
       isLoading.value = false;
     }
