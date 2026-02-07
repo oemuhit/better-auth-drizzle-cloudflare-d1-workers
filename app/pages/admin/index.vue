@@ -16,6 +16,7 @@ const { data: productsData } = await useFetch("/api/products", {
 });
 const { data: ordersData } = await useFetch("/api/admin/orders", {
   query: { limit: 500 },
+  headers: useRequestHeaders(['cookie']),
 });
 const { data: categoriesData } = await useFetch("/api/categories", {
   query: { includeInactive: true },

@@ -32,7 +32,9 @@ const ticketId = route.params.id as string;
 const session = authClient.useSession();
 const user = computed(() => session.value.data?.user);
 
-const { data: ticketData, refresh, pending } = await useFetch(`/api/admin/tickets/${ticketId}`);
+const { data: ticketData, refresh, pending } = await useFetch(`/api/admin/tickets/${ticketId}`, {
+  headers: useRequestHeaders(['cookie']),
+});
 const ticket = computed(() => ticketData.value?.data);
 
 // Track document visibility

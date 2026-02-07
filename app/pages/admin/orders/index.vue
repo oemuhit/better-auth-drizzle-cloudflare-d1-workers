@@ -2,6 +2,16 @@
 import { Eye, ChevronRight } from "lucide-vue-next";
 import type { ColumnDef } from "@tanstack/vue-table";
 import { h } from "vue";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationFirst,
+  PaginationItem,
+  PaginationLast,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 definePageMeta({
   layout: "admin",
@@ -12,22 +22,34 @@ useHead({
   title: "Siparişler | Admin",
 });
 
+// Pagination
+const currentPage = ref(1);
+const itemsPerPage = ref(20);
+
 // Filters
 const statusFilter = ref("all");
 const paymentFilter = ref("all");
 
+// Reset to page 1 when filters change
+watch([statusFilter, paymentFilter], () => {
+  currentPage.value = 1;
+});
+
 // Fetch orders
-const { data: ordersData, refresh } = await useFetch("/api/admin/orders", {
+const { data: ordersData, refresh, pending } = await useFetch("/api/admin/orders", {
   query: computed(() => ({
-    limit: 100,
+    page: currentPage.value,
+    limit: itemsPerPage.value,
     status: statusFilter.value === "all" ? undefined : statusFilter.value,
     paymentStatus:
       paymentFilter.value === "all" ? undefined : paymentFilter.value,
   })),
-  watch: [statusFilter, paymentFilter],
+  watch: [statusFilter, paymentFilter, currentPage],
+  headers: useRequestHeaders(['cookie']),
 });
 
 const orders = computed(() => ordersData.value?.data || []);
+const pagination = computed(() => ordersData.value?.pagination);
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("tr-TR", {
@@ -141,7 +163,7 @@ const paymentOptions = [
     <div>
       <h1 class="text-3xl font-bold">Siparişler</h1>
       <p class="text-muted-foreground">
-        {{ orders.length }} sipariş listeleniyor
+        {{ pagination?.total || 0 }} sipariş bulundu
       </p>
     </div>
 
@@ -185,6 +207,41 @@ const paymentOptions = [
           :data="orders"
           search-placeholder="Sipariş ara..."
         />
+        
+        <!-- Pagination -->
+        <div v-if="pagination && pagination.totalPages > 1" class="flex items-center justify-between mt-6 pt-4 border-t">
+          <p class="text-sm text-muted-foreground">
+            Sayfa {{ pagination.page }} / {{ pagination.totalPages }}
+          </p>
+          <Pagination
+            v-slot="{ page }"
+            :page="currentPage"
+            :total="pagination.total"
+            :items-per-page="itemsPerPage"
+            :sibling-count="1"
+            show-edges
+            @update:page="(p) => currentPage = p"
+          >
+            <PaginationContent class="flex items-center gap-1">
+              <PaginationFirst />
+              <PaginationPrevious />
+              <template v-for="(item, index) in page.items" :key="index">
+                <PaginationItem v-if="item.type === 'page'" :value="item.value" as-child>
+                  <Button
+                    :variant="item.value === currentPage ? 'default' : 'outline'"
+                    size="icon"
+                    class="h-9 w-9"
+                  >
+                    {{ item.value }}
+                  </Button>
+                </PaginationItem>
+                <PaginationEllipsis v-else :index="index" />
+              </template>
+              <PaginationNext />
+              <PaginationLast />
+            </PaginationContent>
+          </Pagination>
+        </div>
       </CardContent>
     </Card>
   </div>

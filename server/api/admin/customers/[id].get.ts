@@ -1,6 +1,6 @@
 import { eq, sql, desc, and } from "drizzle-orm";
 import { useDb } from "../../../utils/db";
-import { user, order } from "../../../db/schema";
+import { user, order, ticket } from "../../../db/schema";
 import { requireAdmin } from "~~/server/utils/admin";
 
 export default defineEventHandler(async (event) => {
@@ -50,8 +50,21 @@ const customers = await db
     .where(eq(order.userId, id))
     .orderBy(desc(order.createdAt));
 
+  // Get customer support tickets
+  const customerTickets = await db.query.ticket.findMany({
+    where: eq(ticket.userId, id),
+    orderBy: [desc(ticket.createdAt)],
+    with: {
+      messages: {
+        limit: 1,
+        orderBy: (messages, { desc }) => [desc(messages.createdAt)],
+      },
+    },
+  });
+
   return {
     data: customers[0],
     orders: customerOrders,
+    tickets: customerTickets,
   };
 });

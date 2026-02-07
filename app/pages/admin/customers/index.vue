@@ -13,7 +13,9 @@ useHead({
 });
 
 // Fetch customers (users)
-const { data: customersData } = await useFetch("/api/admin/customers");
+const { data: customersData } = await useFetch("/api/admin/customers", {
+  headers: useRequestHeaders(['cookie']),
+});
 
 const customers = computed(() => customersData.value?.data || []);
 

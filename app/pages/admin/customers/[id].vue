@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import {
   ChevronLeft,
+  ChevronRight,
   Mail,
   Calendar,
   Package,
   CreditCard,
+  LifeBuoy,
 } from "lucide-vue-next";
 
 definePageMeta({
@@ -13,11 +15,14 @@ definePageMeta({
 });
 
 const route = useRoute();
-const id = computed(() => route.params.id as string);
+const id = route.params.id as string;
 
 // Fetch customer details
 const { data: customerData, error } = await useFetch(
-  `/api/admin/customers/${id.value}`,
+  `/api/admin/customers/${id}`,
+  {
+    headers: useRequestHeaders(['cookie']),
+  }
 );
 
 if (error.value) {
@@ -29,6 +34,16 @@ if (error.value) {
 
 const customer = computed(() => customerData.value?.data);
 const orders = computed(() => customerData.value?.orders || []);
+const tickets = computed(() => customerData.value?.tickets || []);
+
+// Orders pagination
+const ordersPage = ref(1);
+const ordersPerPage = 5;
+const totalOrderPages = computed(() => Math.ceil(orders.value.length / ordersPerPage));
+const paginatedOrders = computed(() => {
+  const start = (ordersPage.value - 1) * ordersPerPage;
+  return orders.value.slice(start, start + ordersPerPage);
+});
 
 useHead({
   title: computed(() =>
@@ -38,7 +53,7 @@ useHead({
   ),
 });
 
-function formatDate(date: number | Date | null) {
+function formatDate(date: string | number | Date | null | undefined) {
   if (!date) return "-";
   return new Intl.DateTimeFormat("tr-TR", {
     year: "numeric",
@@ -53,6 +68,26 @@ function formatPrice(price: number) {
     currency: "TRY",
   }).format(price);
 }
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "open": return "default";
+    case "closed": return "secondary";
+    case "pending": return "outline";
+    case "in_progress": return "destructive";
+    default: return "secondary";
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case "open": return "Açık";
+    case "closed": return "Kapalı";
+    case "pending": return "Yanıt Bekliyor";
+    case "in_progress": return "İşlemde";
+    default: return status;
+  }
+};
 </script>
 
 <template>
@@ -112,6 +147,10 @@ function formatPrice(price: number) {
               <span>{{ orders.length }} sipariş</span>
             </div>
             <div class="flex items-center gap-2 text-sm">
+              <LifeBuoy class="h-4 w-4 text-muted-foreground" />
+              <span>{{ tickets.length }} destek talebi</span>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
               <CreditCard class="h-4 w-4 text-muted-foreground" />
               <span>Toplam: {{ formatPrice(customer?.totalSpent || 0) }}</span>
             </div>
@@ -119,39 +158,108 @@ function formatPrice(price: number) {
         </CardContent>
       </Card>
 
-      <!-- Orders -->
-      <Card class="md:col-span-2">
-        <CardHeader>
-          <CardTitle>Siparişler</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div
-            v-if="orders.length === 0"
-            class="text-center py-8 text-muted-foreground"
-          >
-            Henüz sipariş yok
-          </div>
-          <div v-else class="space-y-4">
+      <!-- Orders & Tickets Column -->
+      <div class="md:col-span-2 space-y-6">
+        <!-- Orders -->
+        <Card>
+          <CardHeader>
+            <CardTitle>Siparişler ({{ orders.length }})</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div
-              v-for="order in orders"
-              :key="order.id"
-              class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer"
-              @click="navigateTo(`/admin/orders/${order.id}`)"
+              v-if="orders.length === 0"
+              class="text-center py-8 text-muted-foreground"
             >
-              <div>
-                <p class="font-medium">{{ order.orderNumber }}</p>
-                <p class="text-sm text-muted-foreground">
-                  {{ formatDate(order.createdAt) }}
-                </p>
+              Henüz sipariş yok
+            </div>
+            <div v-else class="space-y-4">
+              <div
+                v-for="order in paginatedOrders"
+                :key="order.id"
+                class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                @click="navigateTo(`/admin/orders/${order.id}`)"
+              >
+                <div>
+                  <p class="font-medium">{{ order.orderNumber }}</p>
+                  <p class="text-sm text-muted-foreground">
+                    {{ formatDate(order.createdAt) }}
+                  </p>
+                </div>
+                <div class="text-right">
+                  <p class="font-medium">{{ formatPrice(order.total) }}</p>
+                  <OrderStatusBadge :status="order.status" />
+                </div>
               </div>
-              <div class="text-right">
-                <p class="font-medium">{{ formatPrice(order.total) }}</p>
-                <OrderStatusBadge :status="order.status" />
+              
+              <!-- Pagination -->
+              <div v-if="totalOrderPages > 1" class="flex items-center justify-between pt-4 border-t">
+                <p class="text-sm text-muted-foreground">
+                  Sayfa {{ ordersPage }} / {{ totalOrderPages }}
+                </p>
+                <div class="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    :disabled="ordersPage <= 1"
+                    @click="ordersPage--"
+                  >
+                    <ChevronLeft class="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    :disabled="ordersPage >= totalOrderPages"
+                    @click="ordersPage++"
+                  >
+                    <ChevronRight class="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <!-- Support Tickets -->
+        <Card>
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2">
+              <LifeBuoy class="h-5 w-5" />
+              Destek Talepleri
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div
+              v-if="tickets.length === 0"
+              class="text-center py-8 text-muted-foreground"
+            >
+              Henüz destek talebi yok
+            </div>
+            <div v-else class="space-y-4">
+              <div
+                v-for="ticket in tickets"
+                :key="ticket.id"
+                class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                @click="navigateTo(`/admin/tickets/${ticket.id}`)"
+              >
+                <div>
+                  <p class="font-medium">{{ ticket.subject }}</p>
+                  <p class="text-sm text-muted-foreground">
+                    {{ formatDate(ticket.createdAt) }}
+                  </p>
+                </div>
+                <div class="text-right">
+                  <Badge :variant="getStatusColor(ticket.status)">
+                    {{ getStatusLabel(ticket.status) }}
+                  </Badge>
+                  <p class="text-xs text-muted-foreground mt-1">
+                    {{ ticket.messages?.length || 0 }} mesaj
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   </div>
 </template>

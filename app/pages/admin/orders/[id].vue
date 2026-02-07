@@ -7,30 +7,30 @@ definePageMeta({
 });
 
 const route = useRoute();
-const id = computed(() => route.params.id as string);
+const id = route.params.id as string;
 
 // Fetch order (using new direct admin endpoint)
 const {
   data: orderData,
   error: fetchError,
   refresh,
-} = await useFetch(`/api/admin/orders/${id.value}`);
+  status,
+} = await useFetch(`/api/admin/orders/${id}`, {
+  key: `admin-order-${id}`,
+  headers: useRequestHeaders(['cookie']),
+});
 
 const order = computed(() => orderData.value?.data);
 
-if (fetchError.value) {
-  throw createError({
-    statusCode: fetchError.value.statusCode || 404,
-    statusMessage: fetchError.value.statusMessage || "Sipariş bulunamadı",
-  });
-}
-
-if (!order.value) {
-  throw createError({
-    statusCode: 404,
-    statusMessage: "Sipariş bulunamadı",
-  });
-}
+// Handle errors after hydration
+onMounted(() => {
+  if (fetchError.value && !order.value) {
+    throw createError({
+      statusCode: fetchError.value.statusCode || 404,
+      statusMessage: fetchError.value.statusMessage || "Sipariş bulunamadı",
+    });
+  }
+});
 
 useHead({
   title: computed(() =>
@@ -47,7 +47,7 @@ async function updateStatus(field: string, value: string) {
   updateError.value = null;
 
   try {
-    await $fetch(`/api/admin/orders/${id.value}/status`, {
+    await $fetch(`/api/admin/orders/${id}/status`, {
       method: "PATCH",
       body: { [field]: value },
     });
@@ -314,7 +314,22 @@ const fulfillmentOptions = [
           </CardHeader>
           <CardContent>
             <p class="text-sm text-muted-foreground">
-              {{ getAddressDisplay(order.shippingAddress) }}
+              {{ getAddressDisplay(order.shippingAddressSnapshot) }}
+            </p>
+          </CardContent>
+        </Card>
+
+        <!-- Billing Address -->
+        <Card>
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2 text-base">
+              <MapPin class="h-4 w-4" />
+              Fatura Adresi
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p class="text-sm text-muted-foreground">
+              {{ getAddressDisplay(order.billingAddressSnapshot) }}
             </p>
           </CardContent>
         </Card>

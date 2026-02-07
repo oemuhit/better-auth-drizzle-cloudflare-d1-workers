@@ -18,7 +18,9 @@ useHead({
   title: "Destek Talepleri | Admin",
 });
 
-const { data: ticketsData, refresh, pending } = await useFetch("/api/admin/tickets");
+const { data: ticketsData, refresh, pending } = await useFetch("/api/admin/tickets", {
+  headers: useRequestHeaders(['cookie']),
+});
 const tickets = computed(() => ticketsData.value?.data || []);
 
 function formatDate(date: number | Date) {
