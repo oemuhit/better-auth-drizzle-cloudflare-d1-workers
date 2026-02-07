@@ -13,7 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useIntervalFn } from "@vueuse/core";
+import { useIntervalFn, useDocumentVisibility } from "@vueuse/core";
+
+const router = useRouter();
 
 definePageMeta({
   layout: "admin",
@@ -33,9 +35,45 @@ const user = computed(() => session.value.data?.user);
 const { data: ticketData, refresh, pending } = await useFetch(`/api/admin/tickets/${ticketId}`);
 const ticket = computed(() => ticketData.value?.data);
 
-useIntervalFn(() => {
+// Track document visibility
+const visibility = useDocumentVisibility();
+
+// Track last message timestamp for inactivity detection
+const lastMessageCount = ref(ticket.value?.messages?.length || 0);
+const lastActivityTime = ref(Date.now());
+
+// 1 minutes in milliseconds
+const INACTIVITY_TIMEOUT = 1 * 60 * 1000;
+
+// Poll for new messages every 5 seconds, but only when tab is active
+const { pause, resume } = useIntervalFn(() => {
+  // Check for inactivity - redirect if no new messages for 1 minute
+  if (Date.now() - lastActivityTime.value > INACTIVITY_TIMEOUT) {
+    router.push('/admin/tickets');
+    return;
+  }
+  
   refresh();
 }, 5000);
+
+// Watch for new messages to reset activity timer
+watch(() => ticket.value?.messages?.length, (newCount, oldCount) => {
+  if (newCount !== oldCount) {
+    lastActivityTime.value = Date.now();
+    lastMessageCount.value = newCount || 0;
+  }
+});
+
+// Pause polling when tab is not visible
+watch(visibility, (current) => {
+  if (current === 'hidden') {
+    pause();
+  } else {
+    resume();
+    // Reset activity time when user comes back to tab
+    lastActivityTime.value = Date.now();
+  }
+});
 
 // --- Reply Form ---
 const messageSchema = toTypedSchema(
