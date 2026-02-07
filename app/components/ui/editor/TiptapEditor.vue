@@ -309,7 +309,7 @@ function triggerImageUpload() {
 </template>
 
 <style scoped>
-@reference "../../../assets/css/tailwind.css";
+@reference "~/assets/css/tailwind.css";
 
 /* Tiptap specific styles */
 .tiptap p.is-editor-empty:first-child::before {

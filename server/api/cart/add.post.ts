@@ -43,10 +43,15 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    if (productData.status !== "active") {
+    // Aktif, ön sipariş veya gizli (link ile erişilebilir) ürünler sepete eklenebilir
+    const purchasableStatuses = ["active", "backordered", "hidden"];
+    if (!purchasableStatuses.includes(productData.status)) {
       throw createError({
         statusCode: 400,
-        statusMessage: "Product is not available",
+        statusMessage:
+          productData.status === "out_of_stock"
+            ? "Ürün şu an stokta yok."
+            : "Bu ürün satışa kapalı.",
       });
     }
 
@@ -79,8 +84,24 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Verify variant and check stock
-    const variantId = body.productVariantId || (productData.variants.length === 1 ? productData.variants[0].id : null);
+    // Sadece aktif varyantları kullan (is_active = true)
+    const activeVariants = (productData.variants || []).filter((v) => v.isActive);
+    const variantId =
+      body.productVariantId ||
+      (activeVariants.length === 1 ? activeVariants[0].id : null);
+
+    if (body.productVariantId) {
+      const isActiveVariant = activeVariants.some(
+        (v) => v.id === body.productVariantId,
+      );
+      if (!isActiveVariant) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: "Bu varyant satışa kapalı.",
+        });
+      }
+    }
+
     const trackInventory = productData.trackInventory;
 
     if (trackInventory) {

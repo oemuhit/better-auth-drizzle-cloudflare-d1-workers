@@ -300,27 +300,35 @@ const reviewCount = 12;
             />
           </div>
 
-          <!-- Stock Status -->
-          <div v-if="product" class="flex items-center gap-2">
-            <div
-              class="h-3 w-3 rounded-full"
-              :class="product.inStock ? 'bg-green-500' : 'bg-red-500'"
-            />
-            <span :class="product.inStock ? 'text-green-600' : 'text-red-600'">
-              {{ product.inStock ? "Stokta" : "Stokta Yok" }}
-            </span>
-            <span v-if="product.inStock" class="text-sm text-muted-foreground">
-              ({{ product.totalStock }} adet)
-            </span>
+          <!-- Stock / Status -->
+          <div v-if="product" class="flex flex-wrap items-center gap-2">
+            <Badge v-if="product.status === 'backordered'" variant="secondary" class="bg-amber-500/20 text-amber-800 dark:text-amber-200">
+              Ön sipariş
+            </Badge>
+            <Badge v-else-if="product.status === 'out_of_stock'" variant="secondary">
+              Stokta yok
+            </Badge>
+            <template v-else>
+              <div
+                class="h-3 w-3 rounded-full"
+                :class="product.inStock ? 'bg-green-500' : 'bg-red-500'"
+              />
+              <span :class="product.inStock ? 'text-green-600' : 'text-red-600'">
+                {{ product.inStock ? "Stokta" : "Stokta Yok" }}
+              </span>
+              <span v-if="product.inStock" class="text-sm text-muted-foreground">
+                ({{ product.totalStock }} adet)
+              </span>
+            </template>
           </div>
 
           <!-- Add to Cart -->
           <div class="pt-4">
-            {{ selectedVariantId }}
             <AddToCartButton
               :product-id="product.id"
               :variant-id="selectedVariantId"
               :disabled="
+                product.status === 'out_of_stock' ||
                 !product.inStock ||
                 (product.variants?.length > 0 && !selectedVariantId)
               "

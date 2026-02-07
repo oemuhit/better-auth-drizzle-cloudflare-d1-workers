@@ -1,10 +1,18 @@
-import { eq, like, and, or, asc, desc, sql } from "drizzle-orm";
+import { eq, like, and, or, asc, desc, sql, inArray } from "drizzle-orm";
 import { useDb } from "../../utils/db";
-import { product, category } from "../../db/schema";
+import { product, productVariant } from "../../db/schema";
+import { serverAuth } from "../../utils/auth";
+
+/** Mağazada listelenen ürün durumları (active, backordered, out_of_stock) */
+const VISIBLE_IN_STORE_STATUSES = ["active", "backordered", "out_of_stock"] as const;
 
 export default defineEventHandler(async (event) => {
   const db = useDb(event);
   const query = getQuery(event);
+  const auth = serverAuth(event);
+  const session = await auth.api.getSession({ headers: event.headers });
+  const isAdmin = session?.user?.role === "admin";
+  const includeAll = isAdmin && query.includeAll === "true";
 
   // Pagination
   const page = Math.max(1, Number(query.page) || 1);
@@ -22,9 +30,9 @@ export default defineEventHandler(async (event) => {
     // Build where conditions
     const conditions = [];
 
-    // Default: only show active products for public API
-    if (!query.includeAll) {
-      conditions.push(eq(product.status, "active"));
+    // Admin + includeAll: tüm durumlar (taslak dahil). Değilse sadece mağazada görünenler.
+    if (!includeAll) {
+      conditions.push(inArray(product.status, [...VISIBLE_IN_STORE_STATUSES]));
     } else if (status) {
       conditions.push(eq(product.status, status as any));
     }
@@ -63,6 +71,7 @@ export default defineEventHandler(async (event) => {
       with: {
         category: true,
         variants: {
+          where: eq(productVariant.isActive, true),
           limit: 5,
         },
         images: {

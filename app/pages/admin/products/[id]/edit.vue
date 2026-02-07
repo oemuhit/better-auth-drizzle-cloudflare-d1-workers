@@ -9,9 +9,10 @@ definePageMeta({
 const route = useRoute();
 const id = computed(() => route.params.id as string);
 
-// Fetch product
+// Fetch product (includeInactiveVariants: admin tüm varyantları görsün/düzenlesin)
 const { data: productData, error } = await useFetch(
   `/api/products/${id.value}`,
+  { query: { includeInactiveVariants: "true" } },
 );
 
 if (error.value) {

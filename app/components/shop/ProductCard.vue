@@ -154,6 +154,20 @@ const reviewCount = computed(() => Math.floor(Math.random() * 10));
         -{{ prices.discountPercent }}%
       </div>
 
+      <!-- Ön sipariş / Stok durumu badge (sol alt) -->
+      <div
+        v-if="product.status === 'backordered'"
+        class="absolute bottom-3 left-3 bg-amber-500 text-white text-xs font-medium px-2 py-1 rounded"
+      >
+        Ön sipariş
+      </div>
+      <div
+        v-else-if="product.status === 'out_of_stock'"
+        class="absolute bottom-3 left-3 bg-muted-foreground/90 text-white text-xs font-medium px-2 py-1 rounded"
+      >
+        Stokta yok
+      </div>
+
       <!-- Quick Actions -->
       <div
         class="absolute top-3 right-3 flex flex-col gap-2 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
@@ -163,7 +177,7 @@ const reviewCount = computed(() => Math.floor(Math.random() * 10));
           variant="secondary"
           class="h-9 w-9 rounded-full shadow-lg"
           @click.prevent="handleQuickAdd"
-          :disabled="isLoading"
+          :disabled="isLoading || product.status === 'out_of_stock'"
         >
           <ShoppingCart class="h-4 w-4" />
         </Button>
@@ -178,13 +192,13 @@ const reviewCount = computed(() => Math.floor(Math.random() * 10));
         </Button>
       </div>
 
-      <!-- Out of Stock Overlay -->
+      <!-- Stokta yok overlay (tıklanabilir ama sepete eklenemez) -->
       <div
         v-if="product.status === 'out_of_stock'"
-        class="absolute inset-0 bg-black/50 flex items-center justify-center"
+        class="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none"
       >
-        <span class="bg-white text-black px-4 py-2 rounded font-medium text-sm">
-          Stokta Yok
+        <span class="bg-white text-black px-3 py-1.5 rounded font-medium text-sm">
+          Stokta yok
         </span>
       </div>
     </NuxtLink>

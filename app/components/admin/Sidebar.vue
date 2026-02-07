@@ -5,12 +5,12 @@ import {
   FolderTree,
   ShoppingCart,
   Users,
-  Settings,
   ChevronLeft,
   Store,
   Palette,
   Receipt,
   LifeBuoy,
+  BookOpen,
 } from "lucide-vue-next";
 
 const route = useRoute();
@@ -45,6 +45,11 @@ const menuItems = [
     title: "Destek Talepleri",
     icon: LifeBuoy,
     href: "/admin/tickets",
+  },
+  {
+    title: "Panel Kılavuzu",
+    icon: BookOpen,
+    href: "/admin/guide",
   },
 ];
 

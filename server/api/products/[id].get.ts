@@ -1,10 +1,19 @@
-import { eq, or } from "drizzle-orm";
+import { eq, or, inArray } from "drizzle-orm";
 import { useDb } from "../../utils/db";
-import { product } from "../../db/schema";
+import { product, productVariant } from "../../db/schema";
+import { serverAuth } from "../../utils/auth";
+
+/** Detay sayfasında görülebilen durumlar (hidden = sadece doğrudan link) */
+const VIEWABLE_STATUSES = ["active", "backordered", "out_of_stock", "hidden"] as const;
 
 export default defineEventHandler(async (event) => {
   const db = useDb(event);
   const id = getRouterParam(event, "id");
+  const query = getQuery(event);
+  const auth = serverAuth(event);
+  const session = await auth.api.getSession({ headers: event.headers });
+  const isAdminRequest = session?.user?.role === "admin";
+  const includeInactiveVariants = isAdminRequest && query.includeInactiveVariants === "true";
 
   if (!id) {
     throw createError({
@@ -20,6 +29,7 @@ export default defineEventHandler(async (event) => {
       with: {
         category: true,
         variants: {
+          ...(includeInactiveVariants ? {} : { where: eq(productVariant.isActive, true) }),
           orderBy: (v, { asc }) => [asc(v.price)],
         },
         images: {
@@ -29,6 +39,14 @@ export default defineEventHandler(async (event) => {
     });
 
     if (!foundProduct) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Product not found",
+      });
+    }
+
+    // Admin değilse: sadece görüntülenebilir durumdaki ürünleri döndür (draft/inactive = 404). Admin her durumu görebilir.
+    if (!isAdminRequest && !VIEWABLE_STATUSES.includes(foundProduct.status as any)) {
       throw createError({
         statusCode: 404,
         statusMessage: "Product not found",

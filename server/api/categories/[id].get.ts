@@ -1,6 +1,6 @@
-import { eq, or } from "drizzle-orm";
+import { eq, or, inArray } from "drizzle-orm";
 import { useDb } from "../../utils/db";
-import { category } from "../../db/schema";
+import { category, product } from "../../db/schema";
 
 export default defineEventHandler(async (event) => {
   const db = useDb(event);
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
         parentCategory: true,
         subCategories: true,
         products: {
-          where: (product, { eq }) => eq(product.status, "active"),
+          where: inArray(product.status, ["active", "backordered", "out_of_stock"]),
           limit: 10,
         },
       },
