@@ -1185,7 +1185,7 @@ const weightUnits = [
               />
             </div>
             <div class="flex items-center justify-center">
-              <Checkbox v-model:checked="variant.isActive" />
+              <Checkbox v-model="variant.isActive" />
             </div>
             <div class="flex items-center justify-end">
               <Button
