@@ -380,6 +380,7 @@ export interface GCreateReturnRequest {
   providerServiceCode: string;
   count: number;
   senderAddress: GReturnSenderAddress;
+  test?: boolean;
 }
 
 export async function geliverCreateReturn(
@@ -397,6 +398,7 @@ export async function geliverCreateReturn(
       providerServiceCode: req.providerServiceCode,
       count: req.count,
       senderAddress: req.senderAddress,
+      test: req.test,
     }
   );
 }

@@ -44,7 +44,21 @@ const products = computed(() => productsData.value?.data || []);
 
 
 
-  <div class="flex w-full justify-center">
+    <div class="container mx-auto px-4 py-12">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <h2 class="text-3xl font-bold mb-4 tracking-tight">Ürün Boyutu Görselleştirici</h2>
+        <p class="text-muted-foreground">Günlük eşyalarınızın çanta içerisinde nasıl duracağını ve kapladığı alanı gerçek boyutlarıyla deneyimleyin.</p>
+      </div>
+      
+      <div class="max-w-5xl mx-auto">
+        <BagVisualizer />
+      </div>
+    </div>
+
+
+
+
+      <div class="flex w-full justify-center">
     <div
       class="rounded-3xl border border-neutral-200 bg-neutral-100 p-4 dark:border-neutral-800 dark:bg-neutral-900"
     >

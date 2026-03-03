@@ -10,12 +10,12 @@ export default defineNuxtConfig({
     // iyzico configuration (server-side only)
     iyzicoApiKey: process.env.IYZICO_API_KEY || "",
     iyzicoSecretKey: process.env.IYZICO_SECRET_KEY || "",
-    iyzicoSandbox: process.env.IYZICO_SANDBOX || "true",
+    iyzicoSandbox: (process.env.IYZICO_SANDBOX || "true") === "true",
     // Geliver cargo (server-side only)
     geliverToken: process.env.GELIVER_TOKEN || "",
     geliverSenderId: process.env.GELIVER_SENDER_ID || "",
     geliverStoreUrl: process.env.GELIVER_STORE_URL || "https://nuxt.oertugrulmuhit.workers.dev",
-    geliverTestMode: process.env.GELIVER_TEST_MODE || "false",
+    geliverTestMode: (process.env.GELIVER_TEST_MODE || "false") === "true",
     geliverReturnProviderCode: process.env.GELIVER_RETURN_PROVIDER_CODE || "GELIVER_STANDART",
     // Public URL for callbacks
     public: {

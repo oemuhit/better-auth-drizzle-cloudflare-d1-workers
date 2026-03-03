@@ -58,6 +58,11 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  console.log("Geliver Test Mode Config:", (config as any).geliverTestMode, typeof (config as any).geliverTestMode);
+  console.log("Raw Process Env GELIVER_TEST_MODE:", process.env.GELIVER_TEST_MODE);
+  console.log("Raw Process Env NUXT_GELIVER_TEST_MODE:", (process.env as any).NUXT_GELIVER_TEST_MODE);
+  console.log("All Process Env Keys:", Object.keys(process.env).filter(k => k.includes("GELIVER")));
+
   try {
     const result = await createShipmentAndGetOffers({
       token,
@@ -79,7 +84,7 @@ export default defineEventHandler(async (event) => {
           ? orderItems.map(i => ({ title: i.title, quantity: i.quantity }))
           : [{ title: "Sipariş ürünleri", quantity: 1 }],
       },
-      test: (config as any).geliverTestMode === "true",
+      test: String((config as any).geliverTestMode) === "true",
       storeUrl: (config as any).geliverStoreUrl ?? "https://geliver.io",
     });
 

@@ -144,7 +144,7 @@ export default defineEventHandler(async (event) => {
                 quantity: i.quantity,
               })),
             },
-      test: (config as any).geliverTestMode === "true",
+      test: (config as any).geliverTestMode === true,
             storeUrl: (config.geliverStoreUrl as string) || undefined,
           });
 

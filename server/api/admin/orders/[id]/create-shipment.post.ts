@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
         totalAmount: foundOrder.total,
         currency: "TRY",
       },
-      test: false,
+      test: (config as any).geliverTestMode === true,
       storeUrl: (config.geliverStoreUrl as string) || undefined,
     });
 console.log(shipmentResult)

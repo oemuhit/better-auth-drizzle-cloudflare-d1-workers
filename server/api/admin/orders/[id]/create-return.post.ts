@@ -73,6 +73,7 @@ export default defineEventHandler(async (event) => {
         cityCode: snap.cityCode || "34",
         districtName: snap.district,
       },
+      test: (config as any).geliverTestMode === true,
     });
 
     console.log("[create-return] Geliver raw response:", JSON.stringify(returnShipment, null, 2));
