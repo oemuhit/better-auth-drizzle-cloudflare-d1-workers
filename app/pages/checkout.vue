@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ChevronLeft, Loader2 as LucideLoader2, MapPin, Plus, Pencil } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import { useSession } from "~/lib/auth-client";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
@@ -199,8 +200,60 @@ const taxBreakdown = computed(() => {
   return totalTax;
 });
 
-// Total is just subtotal + shipping (tax is already included in prices)
-const total = computed(() => subtotal.value + shippingTotal.value);
+// Coupon state
+const couponCode = ref("");
+const appliedCoupon = ref<any>(null);
+const discountTotal = ref(0);
+const isValidatingCoupon = ref(false);
+const couponError = ref<string | null>(null);
+
+async function handleApplyCoupon() {
+  if (!couponCode.value) return;
+
+  isValidatingCoupon.value = true;
+  couponError.value = null;
+
+  try {
+    const response = await $fetch<{
+      valid: boolean;
+      coupon?: any;
+      discountAmount?: number;
+      error?: string;
+    }>("/api/coupons/validate", {
+      method: "POST",
+      body: {
+        code: couponCode.value,
+        subtotal: subtotal.value,
+      },
+    });
+
+    if (response.valid) {
+      appliedCoupon.value = response.coupon;
+      discountTotal.value = response.discountAmount || 0;
+      toast.success("Kupon başarıyla uygulandı");
+    } else {
+      couponError.value = response.error || "Geçersiz kupon";
+      appliedCoupon.value = null;
+      discountTotal.value = 0;
+    }
+  } catch (err: any) {
+    couponError.value = err.data?.statusMessage || "Kupon doğrulanamadı";
+    appliedCoupon.value = null;
+    discountTotal.value = 0;
+  } finally {
+    isValidatingCoupon.value = false;
+  }
+}
+
+function removeCoupon() {
+  appliedCoupon.value = null;
+  discountTotal.value = 0;
+  couponCode.value = "";
+  couponError.value = null;
+}
+
+// Total is subtotal + shipping - discount
+const total = computed(() => Math.max(0, subtotal.value + shippingTotal.value - discountTotal.value));
 
 // Submit state
 const isSubmitting = ref(false);
@@ -259,6 +312,7 @@ async function handleSubmitOrder() {
           ? selectedShippingAddressId.value
           : selectedBillingAddressId.value,
         notes: notes.value || undefined,
+        couponCode: appliedCoupon.value?.code || undefined,
       },
     });
 
@@ -469,11 +523,55 @@ const img = useImage();
 
             <Separator />
 
+            <!-- Coupon Code -->
+            <div class="space-y-2">
+              <Label for="coupon" class="text-xs font-semibold text-muted-foreground uppercase">Kupon Kodu</Label>
+              <div class="flex gap-2">
+                <Input
+                  id="coupon"
+                  v-model="couponCode"
+                  placeholder="KOD GİRİN"
+                  :disabled="isValidatingCoupon || !!appliedCoupon"
+                  class="uppercase text-sm h-9"
+                  @keypress.enter.prevent="handleApplyCoupon"
+                />
+                <Button
+                  v-if="!appliedCoupon"
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  class="h-9 px-4"
+                  :disabled="!couponCode || isValidatingCoupon"
+                  @click="handleApplyCoupon"
+                >
+                  <LucideLoader2 v-if="isValidatingCoupon" class="h-4 w-4 animate-spin" />
+                  <span v-else>Uygula</span>
+                </Button>
+                <Button
+                  v-else
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  class="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  @click="removeCoupon"
+                >
+                  Kaldır
+                </Button>
+              </div>
+              <p v-if="couponError" class="text-[10px] text-destructive font-medium">{{ couponError }}</p>
+              <p v-if="appliedCoupon" class="text-[10px] text-green-600 font-bold uppercase tracking-wider">
+                {{ appliedCoupon.code }} Uygulandı!
+              </p>
+            </div>
+
+            <Separator />
+
             <!-- Totals -->
             <CartSummary
               :subtotal="subtotal"
               :tax-total="taxBreakdown"
               :shipping-total="shippingTotal"
+              :discount-total="discountTotal"
               :total="total"
               show-details
               tax-inclusive

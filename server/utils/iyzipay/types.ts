@@ -35,6 +35,7 @@ export interface IyzicoAddress {
 export interface IyzicoBasketItem {
   id: string;
   price: string;
+  paidPrice: string;
   name: string;
   category1: string;
   category2?: string;

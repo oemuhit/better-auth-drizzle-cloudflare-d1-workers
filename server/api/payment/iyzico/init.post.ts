@@ -18,7 +18,10 @@ import {
   customerAddress,
   order,
   orderItem,
+  coupon,
+  couponUsage,
 } from "../../../db/schema";
+import { validateCoupon } from "../../../utils/coupon";
 
 export default defineEventHandler(async (event) => {
   const db = useDb(event);
@@ -99,7 +102,7 @@ export default defineEventHandler(async (event) => {
     // Calculate totals - prices already include tax (KDV dahil)
     let subtotal = 0;
     let taxTotal = 0;
-    const basketItems: IyzicoBasketItem[] = [];
+    const itemsData: any[] = [];
 
     for (const item of userCart.items) {
       const itemPrice =
@@ -114,17 +117,66 @@ export default defineEventHandler(async (event) => {
       const itemTax = itemTotal * (taxRatePercent / (100 + taxRatePercent));
       taxTotal += itemTax;
 
-      basketItems.push({
+      itemsData.push({
         id: item.productVariant?.id || item.product.id,
         name: item.product.title,
-        category1: item.product.category?.title || "Genel",
-        price: formatIyzicoPrice(itemTotal),
-        itemType: "PHYSICAL" as const,
+        category: item.product.category?.title || "Genel",
+        price: itemTotal,
       });
     }
 
-    // Total is just subtotal (tax is already included in prices)
-    const total = subtotal;
+    // Total is subtotal initially
+    let discountTotal = 0;
+    let appliedCoupon = null;
+
+    if (body.couponCode) {
+      const validation = await validateCoupon(
+        event,
+        body.couponCode,
+        userId,
+        subtotal
+      );
+
+      if (!validation.valid) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: validation.error,
+        });
+      }
+
+      appliedCoupon = validation.coupon;
+      discountTotal = validation.discountAmount || 0;
+    }
+
+    const total = subtotal - discountTotal;
+    const basketItems: IyzicoBasketItem[] = [];
+    let remainingDiscount = discountTotal;
+
+    for (let i = 0; i < itemsData.length; i++) {
+      const item = itemsData[i];
+      let itemDiscount = 0;
+
+      if (discountTotal > 0 && subtotal > 0) {
+        if (i === itemsData.length - 1) {
+          // Last item gets the remaining discount to handle rounding
+          itemDiscount = remainingDiscount;
+        } else {
+          itemDiscount = Number(((item.price / subtotal) * discountTotal).toFixed(2));
+          remainingDiscount -= itemDiscount;
+        }
+      }
+
+      const itemPaidPrice = Math.max(0, item.price - itemDiscount);
+
+      basketItems.push({
+        id: item.id,
+        name: item.name,
+        category1: item.category,
+        price: formatIyzicoPrice(item.price),
+        paidPrice: formatIyzicoPrice(itemPaidPrice),
+        itemType: "PHYSICAL" as const,
+      });
+    }
 
     // Generate conversation ID for tracking
     const conversationId = generateConversationId();
@@ -240,7 +292,8 @@ export default defineEventHandler(async (event) => {
           subtotal,
           taxTotal,
           shippingTotal: 0,
-          discountTotal: 0,
+          discountTotal,
+          couponCode: appliedCoupon?.code || null,
           total,
           notes,
           updatedAt: new Date(),
@@ -267,7 +320,8 @@ export default defineEventHandler(async (event) => {
           subtotal,
           taxTotal,
           shippingTotal: 0,
-          discountTotal: 0,
+          discountTotal,
+          couponCode: appliedCoupon?.code || null,
           total,
           notes,
         })
@@ -313,7 +367,7 @@ export default defineEventHandler(async (event) => {
     const request = {
       locale: IYZICO.LOCALE.TR,
       conversationId,
-      price: formatIyzicoPrice(total),
+      price: formatIyzicoPrice(subtotal),
       paidPrice: formatIyzicoPrice(total),
       currency: IYZICO.CURRENCY.TRY,
       basketId: activeOrder!.id, // Use order ID as basket ID

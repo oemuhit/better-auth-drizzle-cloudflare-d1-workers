@@ -360,6 +360,7 @@ export const order = sqliteTable(
     returnShipmentId: text("return_shipment_id"),
     returnBarcode: text("return_barcode"),
     returnLabelUrl: text("return_label_url"),
+    couponCode: text("coupon_code"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -542,6 +543,7 @@ export const orderRelations = relations(order, ({ one, many }) => ({
     references: [user.id],
   }),
   items: many(orderItem),
+  couponUsages: many(couponUsage),
 }));
 
 // Order Item relations
@@ -649,6 +651,10 @@ export type CartItem = typeof cartItem.$inferSelect;
 export type NewCartItem = typeof cartItem.$inferInsert;
 export type AttributeTemplate = typeof attributeTemplate.$inferSelect;
 export type NewAttributeTemplate = typeof attributeTemplate.$inferInsert;
+export type Coupon = typeof coupon.$inferSelect;
+export type NewCoupon = typeof coupon.$inferInsert;
+export type CouponUsage = typeof couponUsage.$inferSelect;
+export type NewCouponUsage = typeof couponUsage.$inferInsert;
 
 // ============================================================================
 // STOCK RESERVATIONS - Prevents overselling during checkout
@@ -695,6 +701,86 @@ export const stockReservationRelations = relations(stockReservation, ({ one }) =
 
 export type StockReservation = typeof stockReservation.$inferSelect;
 export type NewStockReservation = typeof stockReservation.$inferInsert;
+
+// ============================================================================
+// COUPONS
+// ============================================================================
+export const coupon = sqliteTable(
+  "coupon",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    code: text("code").notNull().unique(),
+    discountType: text("discount_type", { enum: ["percentage", "fixed"] }).notNull(),
+    discountValue: real("discount_value").notNull(),
+    minPurchaseAmount: real("min_purchase_amount").default(0),
+    startDate: integer("start_date", { mode: "timestamp_ms" }),
+    endDate: integer("end_date", { mode: "timestamp_ms" }),
+    isNewUserOnly: integer("is_new_user_only", { mode: "boolean" }).default(false).notNull(),
+    isFirstPurchaseOnly: integer("is_first_purchase_only", { mode: "boolean" }).default(false).notNull(),
+    usageLimitPerUser: integer("usage_limit_per_user").default(1),
+    usageLimitTotal: integer("usage_limit_total"),
+    isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("idx_coupon_code").on(table.code),
+    index("idx_coupon_active").on(table.isActive),
+  ]
+);
+
+export const couponUsage = sqliteTable(
+  "coupon_usage",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    couponId: text("coupon_id")
+      .notNull()
+      .references(() => coupon.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => order.id, { onDelete: "cascade" }),
+    discountAmount: real("discount_amount").notNull(),
+    usedAt: integer("used_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index("idx_coupon_usage_coupon").on(table.couponId),
+    index("idx_coupon_usage_user").on(table.userId),
+    index("idx_coupon_usage_order").on(table.orderId),
+  ]
+);
+
+export const couponRelations = relations(coupon, ({ many }) => ({
+  usages: many(couponUsage),
+}));
+
+export const couponUsageRelations = relations(couponUsage, ({ one }) => ({
+  coupon: one(coupon, {
+    fields: [couponUsage.couponId],
+    references: [coupon.id],
+  }),
+  user: one(user, {
+    fields: [couponUsage.userId],
+    references: [user.id],
+  }),
+  order: one(order, {
+    fields: [couponUsage.orderId],
+    references: [order.id],
+  }),
+}));
 
 // ============================================================================
 // TICKETS - Customer support system

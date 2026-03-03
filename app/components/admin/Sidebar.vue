@@ -11,6 +11,7 @@ import {
   Receipt,
   LifeBuoy,
   BookOpen,
+  Ticket,
 } from "lucide-vue-next";
 
 const route = useRoute();
@@ -40,6 +41,11 @@ const menuItems = [
     title: "Müşteriler",
     icon: Users,
     href: "/admin/customers",
+  },
+  {
+    title: "Kuponlar",
+    icon: Ticket,
+    href: "/admin/coupons",
   },
   {
     title: "Destek Talepleri",

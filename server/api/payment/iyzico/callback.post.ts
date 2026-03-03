@@ -9,6 +9,8 @@ import {
   orderItem,
   product,
   productVariant,
+  coupon,
+  couponUsage,
 } from "../../../db/schema";
 
 export default defineEventHandler(async (event) => {
@@ -197,6 +199,22 @@ export default defineEventHandler(async (event) => {
         "[Geliver] Shipment creation failed (non-fatal):",
         geliverError?.message || geliverError,
       );
+    }
+
+    // 5. Record coupon usage if applicable
+    if (existingOrder.couponCode) {
+      const appliedCoupon = await db.query.coupon.findFirst({
+        where: eq(coupon.code, existingOrder.couponCode),
+      });
+
+      if (appliedCoupon) {
+        await db.insert(couponUsage).values({
+          couponId: appliedCoupon.id,
+          userId: existingOrder.userId,
+          orderId: existingOrder.id,
+          discountAmount: existingOrder.discountTotal || 0,
+        });
+      }
     }
 
     // Redirect to order confirmation page

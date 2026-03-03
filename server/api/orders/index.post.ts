@@ -8,8 +8,10 @@ import {
   product,
   productVariant,
   customerAddress,
+  couponUsage,
 } from "../../db/schema";
 import { serverAuth } from "../../utils/auth";
+import { validateCoupon } from "../../utils/coupon";
 
 function generateOrderNumber(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -99,7 +101,28 @@ export default defineEventHandler(async (event) => {
 
     const taxTotal = body.taxTotal || 0;
     const shippingTotal = body.shippingTotal || 0;
-    const discountTotal = body.discountTotal || 0;
+    let discountTotal = body.discountTotal || 0;
+    let appliedCoupon = null;
+
+    if (body.couponCode) {
+      const validation = await validateCoupon(
+        event,
+        body.couponCode,
+        session.user.id,
+        subtotal
+      );
+
+      if (!validation.valid) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: validation.error,
+        });
+      }
+      
+      appliedCoupon = validation.coupon;
+      discountTotal = validation.discountAmount || 0;
+    }
+
     const total = subtotal + taxTotal + shippingTotal - discountTotal;
 
     // Get addresses for snapshotting
@@ -137,6 +160,7 @@ export default defineEventHandler(async (event) => {
         discountTotal,
         total,
         notes: body.notes || null,
+        couponCode: appliedCoupon?.code || null,
       })
       .returning();
 
@@ -146,6 +170,16 @@ export default defineEventHandler(async (event) => {
         orderId: newOrder.id,
         ...orderItems[i],
         sort: i,
+      });
+    }
+
+    // Record coupon usage
+    if (appliedCoupon) {
+      await db.insert(couponUsage).values({
+        couponId: appliedCoupon.id,
+        userId: session.user.id,
+        orderId: newOrder.id,
+        discountAmount: discountTotal,
       });
     }
 
