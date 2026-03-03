@@ -71,6 +71,8 @@
 	// Secrets (set via wrangler secret put):
 	// - IYZICO_API_KEY
 	// - IYZICO_SECRET_KEY
+	// - GELIVER_TOKEN          → wrangler secret put GELIVER_TOKEN
+	// - GELIVER_SENDER_ID      → Geliver gönderici adres ID'si (tek seferlik oluşturun)
 	/**
    * Service Bindings (communicate between multiple Workers)
    * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings

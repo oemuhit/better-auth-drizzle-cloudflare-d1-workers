@@ -280,7 +280,9 @@ export const customerAddress = sqliteTable(
     addressLine1: text("address_line_1").notNull(),
     addressLine2: text("address_line_2"),
     city: text("city").notNull(),
+    cityCode: text("city_code"),
     state: text("state"),
+    district: text("district"),
     postalCode: text("postal_code").notNull(),
     countryCode: text("country_code").notNull().default("TR"),
     phone: text("phone"),
@@ -344,6 +346,20 @@ export const order = sqliteTable(
     discountTotal: real("discount_total").notNull().default(0),
     total: real("total").notNull().default(0),
     notes: text("notes"),
+    // Geliver cargo tracking
+    geliverShipmentId: text("geliver_shipment_id"),
+    trackingNumber: text("tracking_number"),
+    barcode: text("barcode"),
+    trackingUrl: text("tracking_url"),
+    labelUrl: text("label_url"),
+    // Geliver payment info
+    transactionId: text("transaction_id"),
+    amountCharged: text("amount_charged"),
+    currency: text("currency"),
+    // Geliver return shipment tracking
+    returnShipmentId: text("return_shipment_id"),
+    returnBarcode: text("return_barcode"),
+    returnLabelUrl: text("return_label_url"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),

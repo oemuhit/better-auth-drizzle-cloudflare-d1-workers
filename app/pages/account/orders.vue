@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Package, ChevronRight } from "lucide-vue-next";
+import { Package, ChevronRight, Truck, Loader2 } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 
 definePageMeta({
   layout: "account",
@@ -10,7 +11,7 @@ useHead({
   title: "Siparişlerim | Hesabım",
 });
 
-const { data: ordersData, pending } = await useFetch("/api/orders");
+const { data: ordersData, pending, refresh } = await useFetch("/api/orders");
 const orders = computed(() => ordersData.value?.data || []);
 
 function formatPrice(price: number) {
@@ -28,6 +29,54 @@ function formatDate(date: number | Date) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(date));
+}
+
+const ticketLoadingFor = ref<string | null>(null);
+
+type OrderSummary = {
+  id: string;
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  fulfillmentStatus?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+};
+
+async function createOrderTicket(order: OrderSummary, type: "cancel" | "return") {
+  ticketLoadingFor.value = order.id;
+  const isCancel = type === "cancel";
+  const subject = isCancel
+    ? `Sipariş iptal talebi - ${order.orderNumber}`
+    : `Sipariş iade talebi - ${order.orderNumber}`;
+  const message = isCancel
+    ? `Merhaba, ${order.orderNumber} numaralı siparişimin iptal edilmesini talep ediyorum.`
+    : `Merhaba, ${order.orderNumber} numaralı siparişim için iade talep ediyorum. Lütfen süreç hakkında bilgi verir misiniz?`;
+
+  try {
+    await $fetch("/api/tickets", {
+      method: "POST",
+      body: {
+        subject,
+        category: "order",
+        orderId: order.id,
+        message,
+      },
+    });
+    toast.success(
+      isCancel ? "İptal talebiniz alındı." : "İade talebiniz alındı."
+    );
+    await refresh();
+  } catch (err: any) {
+    const msg =
+      err?.data?.statusMessage ||
+      err?.data?.message ||
+      err?.message ||
+      "Talep oluşturulamadı.";
+    toast.error(msg);
+  } finally {
+    ticketLoadingFor.value = null;
+  }
 }
 </script>
 
@@ -96,16 +145,63 @@ function formatDate(date: number | Date) {
                   {{ order.items.length }} ürün
                 </span>
               </div>
-              <div class="text-right">
+              <div class="text-right space-y-1">
                 <p class="font-bold text-lg">{{ formatPrice(order.total) }}</p>
-                <div class="flex gap-1 mt-1 justify-end">
+                <div class="flex gap-1 justify-end">
                   <OrderStatusBadge
                     :status="order.paymentStatus"
                     type="payment"
                     size="sm"
                   />
                 </div>
+                <!-- Kargo bilgisi -->
+                <p
+                  v-if="order.trackingNumber"
+                  class="text-xs text-muted-foreground flex items-center gap-1 justify-end"
+                >
+                  <Truck class="h-3 w-3" />
+                  <span>Takip: {{ order.trackingNumber }}</span>
+                </p>
+                <a
+                  v-if="order.trackingUrl"
+                  :href="order.trackingUrl"
+                  target="_blank"
+                  rel="noopener"
+                  class="block text-[11px] text-primary hover:underline"
+                  @click.stop
+                >
+                  Kargoyu takip et
+                </a>
+                <p
+                  v-else-if="!order.trackingNumber && order.fulfillmentStatus !== 'fulfilled'"
+                  class="text-[11px] text-muted-foreground"
+                >
+                  Kargo hazırlık aşamasında
+                </p>
               </div>
+            </div>
+            <!-- İptal / iade talebi butonları -->
+            <div class="mt-4 flex flex-wrap gap-2 justify-end text-xs">
+              <!-- Ödeme alınmadı veya bekliyor ise iptal talebi -->
+              <Button
+                v-if="order.status === 'pending' && order.paymentStatus !== 'paid'"
+                size="xs"
+                variant="outline"
+                :disabled="ticketLoadingFor === order.id"
+                @click.stop.prevent="createOrderTicket(order as any, 'cancel')"
+              >
+                {{ ticketLoadingFor === order.id ? "Gönderiliyor..." : "İptal talebi oluştur" }}
+              </Button>
+              <!-- Teslim edilmiş / kargolanmış sipariş için iade talebi -->
+              <Button
+                v-else-if="order.paymentStatus === 'paid'"
+                size="xs"
+                variant="ghost"
+                :disabled="ticketLoadingFor === order.id"
+                @click.stop.prevent="createOrderTicket(order as any, 'return')"
+              >
+                {{ ticketLoadingFor === order.id ? "Gönderiliyor..." : "İade talebi oluştur" }}
+              </Button>
             </div>
           </CardContent>
         </NuxtLink>

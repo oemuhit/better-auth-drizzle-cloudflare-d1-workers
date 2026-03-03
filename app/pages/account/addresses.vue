@@ -17,6 +17,7 @@ import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
 
+
 definePageMeta({
   layout: "account",
   middleware: "auth",
@@ -42,7 +43,31 @@ import { addressSchema as rawAddressSchema } from "../../../server/utils/validat
 
 const addressSchema = toTypedSchema(rawAddressSchema);
 
-const { handleSubmit, resetForm, setValues, errors, defineField, meta } = useForm({
+// City & district data — fetched from Geliver API
+const { data: citiesData } = await useFetch('/api/locations/cities');
+const cityOptions = computed(() =>
+  (citiesData.value as any[] ?? []).map((c: any) => ({ code: c.code, name: c.name }))
+);
+
+// Districts are fetched on-demand when cityCode changes
+const districtOptions = ref<{ id: number | null; name: string }[]>([]);
+let districtFetchController: AbortController | null = null;
+
+async function fetchDistricts(code: string) {
+  districtOptions.value = [];
+  if (!code) return;
+  if (districtFetchController) districtFetchController.abort();
+  districtFetchController = new AbortController();
+  try {
+    const data = await $fetch(`/api/locations/districts?cityCode=${encodeURIComponent(code)}`);
+    districtOptions.value = data as any[];
+  } catch {
+    // ignore abort errors
+  }
+}
+
+// Form setup
+const { handleSubmit, resetForm, setValues, errors, defineField, meta, values: formValues } = useForm({
   validationSchema: addressSchema,
   initialValues: {
     firstName: "",
@@ -50,7 +75,9 @@ const { handleSubmit, resetForm, setValues, errors, defineField, meta } = useFor
     addressLine1: "",
     addressLine2: "",
     city: "",
+    cityCode: "",
     state: "",
+    district: "",
     postalCode: "",
     phone: "",
     countryCode: "TR",
@@ -65,13 +92,36 @@ const [lastName] = defineField('lastName');
 const [addressLine1] = defineField('addressLine1');
 const [addressLine2] = defineField('addressLine2');
 const [city] = defineField('city');
+const [cityCode] = defineField('cityCode');
 const [state] = defineField('state');
+const [district] = defineField('district');
 const [postalCode] = defineField('postalCode');
 const [phone] = defineField('phone');
 const [countryCode] = defineField('countryCode');
 const [isShipping] = defineField('isShipping');
 const [isBilling] = defineField('isBilling');
 const [isDefault] = defineField('isDefault');
+
+// When cityCode changes, sync city name and reset district
+function onCityChange(val: any) {
+  const code = String(val || '');
+  if (!code) return;
+  cityCode.value = code;
+  // Find city name from fetched list
+  const found = (cityOptions.value ?? []).find((c: any) => c.code === code);
+  city.value = found?.name || '';
+  district.value = '';
+  state.value = '';
+  fetchDistricts(code);
+}
+
+// When district changes, sync state field
+function onDistrictChange(val: any) {
+  const d = String(val || '');
+  if (!d) return;
+  district.value = d;
+  state.value = d;
+}
 
 function handleCancel() {
   resetForm();
@@ -82,8 +132,17 @@ function handleCancel() {
 
 function startEdit(address: any) {
   editingAddress.value = address;
-  setValues({ ...address });
+  setValues({
+    ...address,
+    cityCode: address.cityCode || '',
+    district: address.district || '',
+    state: address.state || address.district || '',
+  });
   isAdding.value = true;
+  // Load districts for the existing city
+  if (address.cityCode) {
+    fetchDistricts(address.cityCode);
+  }
 }
 
 const onSave = handleSubmit(async (formValues) => {
@@ -201,14 +260,32 @@ useHead({
                 <Input id="addressLine2" v-model="addressLine2" placeholder="Örn: Güneş Apt. No:5 Daire:2" />
               </div>
               <div class="space-y-2">
-                <Label for="city">Şehir</Label>
-                <Input id="city" v-model="city" placeholder="Örn: İstanbul" :class="{'border-destructive': errors.city}" />
-                <p v-if="errors.city" class="text-xs text-destructive font-medium">{{ errors.city }}</p>
+                <Label for="city">Şehir (İl)</Label>
+                <Select :model-value="cityCode" @update:model-value="onCityChange">
+                  <SelectTrigger :class="{'border-destructive': errors.city}">
+                    <SelectValue placeholder="İl seçiniz" />
+                  </SelectTrigger>
+                  <SelectContent class="max-h-64 overflow-y-auto">
+                    <SelectItem v-for="c in cityOptions" :key="c.code" :value="c.code">
+                      {{ c.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p v-if="errors.city || errors.cityCode" class="text-xs text-destructive font-medium">{{ errors.city || errors.cityCode }}</p>
               </div>
               <div class="space-y-2">
-                <Label for="state">İlçe</Label>
-                <Input id="state" v-model="state" placeholder="Örn: Kadıköy" :class="{'border-destructive': errors.state}" />
-                <p v-if="errors.state" class="text-xs text-destructive font-medium">{{ errors.state }}</p>
+                <Label for="district">İlçe</Label>
+                <Select :model-value="district" :disabled="!cityCode" @update:model-value="onDistrictChange">
+                  <SelectTrigger :class="{'border-destructive': errors.district}">
+                    <SelectValue :placeholder="cityCode ? 'İlçe seçiniz' : 'Önce il seçiniz'" />
+                  </SelectTrigger>
+                  <SelectContent class="max-h-64 overflow-y-auto">
+                    <SelectItem v-for="d in districtOptions" :key="d.name" :value="d.name">
+                      {{ d.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p v-if="errors.district" class="text-xs text-destructive font-medium">{{ errors.district }}</p>
               </div>
               <div class="space-y-2">
                 <Label for="postalCode">Posta Kodu</Label>
@@ -224,19 +301,19 @@ useHead({
                 <p v-if="errors.phone" class="text-xs text-destructive font-medium">{{ errors.phone }}</p>
               </div>
               
-              <div class="sm:col-span-2 flex flex-wrap items-center gap-6 pt-2">
-                <div class="flex items-center space-x-2 bg-muted/50 px-4 py-2 rounded-lg border border-transparent hover:border-primary/20 transition-all">
-                  <Checkbox id="isShipping" :checked="isShipping" @update:checked="v => isShipping = v" />
-                  <Label for="isShipping" class="text-sm font-semibold cursor-pointer select-none">Teslimat Adresi</Label>
-                </div>
-                <div class="flex items-center space-x-2 bg-muted/50 px-4 py-2 rounded-lg border border-transparent hover:border-primary/20 transition-all">
-                  <Checkbox id="isBilling" :checked="isBilling" @update:checked="v => isBilling = v" />
-                  <Label for="isBilling" class="text-sm font-semibold cursor-pointer select-none">Fatura Adresi</Label>
-                </div>
-                <div class="flex items-center space-x-2 bg-muted/50 px-4 py-2 rounded-lg border border-transparent hover:border-primary/20 transition-all">
-                  <Checkbox id="isDefault" :checked="isDefault" @update:checked="v => isDefault = v" />
-                  <Label for="isDefault" class="text-sm font-semibold cursor-pointer select-none">Varsayılan Adres Yap</Label>
-                </div>
+                <div class="sm:col-span-2 flex flex-wrap items-center gap-6 pt-2">
+                  <div class="flex items-center space-x-2 bg-muted/50 px-4 py-2 rounded-lg border border-transparent hover:border-primary/20 transition-all">
+                    <Checkbox id="isShipping" :checked="isShipping" @update:checked="(v: boolean) => isShipping = v" />
+                    <Label for="isShipping" class="text-sm font-semibold cursor-pointer select-none">Teslimat Adresi</Label>
+                  </div>
+                  <div class="flex items-center space-x-2 bg-muted/50 px-4 py-2 rounded-lg border border-transparent hover:border-primary/20 transition-all">
+                    <Checkbox id="isBilling" :checked="isBilling" @update:checked="(v: boolean) => isBilling = v" />
+                    <Label for="isBilling" class="text-sm font-semibold cursor-pointer select-none">Fatura Adresi</Label>
+                  </div>
+                  <div class="flex items-center space-x-2 bg-muted/50 px-4 py-2 rounded-lg border border-transparent hover:border-primary/20 transition-all">
+                    <Checkbox id="isDefault" :checked="isDefault" @update:checked="(v: boolean) => isDefault = v" />
+                    <Label for="isDefault" class="text-sm font-semibold cursor-pointer select-none">Varsayılan Adres Yap</Label>
+                  </div>
               </div>
             </div>
 
@@ -292,7 +369,7 @@ useHead({
                 </div>
                 <p class="text-sm text-foreground/80 leading-relaxed max-w-2xl">
                   {{ address.addressLine1 }}, {{ address.addressLine2 ? address.addressLine2 + ', ' : '' }}
-                  {{ address.state }}, {{ address.postalCode }} {{ address.city }}
+                  {{ address.district || address.state }}, {{ address.postalCode }} {{ address.city }}
                 </p>
                 <div class="flex flex-wrap items-center gap-4 pt-1 text-sm text-muted-foreground">
                   <span class="flex items-center gap-1.5"><Phone class="h-3.5 w-3.5" /> {{ address.phone }}</span>

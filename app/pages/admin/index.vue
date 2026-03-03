@@ -98,10 +98,11 @@ function formatDate(date: number | Date) {
             Henüz sipariş yok
           </div>
           <div v-else class="space-y-4">
-            <div
+            <NuxtLink
               v-for="order in recentOrders.slice(0, 5)"
               :key="order.id"
-              class="flex items-center justify-between"
+              :to="`/admin/orders/${order.id}`"
+              class="flex items-center justify-between hover:bg-muted/50 rounded-md px-2 py-2 -mx-2 transition-colors cursor-pointer"
             >
               <div>
                 <p class="font-medium">{{ order.orderNumber }}</p>
@@ -113,7 +114,7 @@ function formatDate(date: number | Date) {
                 <p class="font-medium">{{ formatPrice(order.total) }}</p>
                 <OrderStatusBadge :status="order.status" />
               </div>
-            </div>
+            </NuxtLink>
           </div>
         </CardContent>
       </Card>

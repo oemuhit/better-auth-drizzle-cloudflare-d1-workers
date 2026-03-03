@@ -42,6 +42,30 @@ const editingAddressId = ref<string | null>(null);
 
 const addressSchema = toTypedSchema(rawAddressSchema);
 
+// City & district data — fetched from Location API
+const { data: citiesData } = await useFetch('/api/locations/cities');
+const cityOptions = computed(() => (citiesData.value as any[] ?? []));
+
+const districtOptions = ref<{ id: number | null; name: string }[]>([]);
+let districtFetchController: AbortController | null = null;
+
+async function fetchDistricts(code: string) {
+  districtOptions.value = [];
+  if (!code) return;
+  if (districtFetchController) districtFetchController.abort();
+  districtFetchController = new AbortController();
+  try {
+    const data = await $fetch(`/api/locations/districts?cityCode=${encodeURIComponent(code)}`, {
+      signal: districtFetchController.signal
+    });
+    districtOptions.value = data as any[];
+  } catch (err: any) {
+    if (err.name !== 'AbortError') {
+      console.error('Failed to fetch districts:', err);
+    }
+  }
+}
+
 const { handleSubmit: handleAddAddress, resetForm, errors, defineField, meta, isSubmitting: isAddingAddress } = useForm({
   validationSchema: addressSchema,
   initialValues: {
@@ -50,7 +74,9 @@ const { handleSubmit: handleAddAddress, resetForm, errors, defineField, meta, is
     addressLine1: "",
     addressLine2: "",
     city: "",
+    cityCode: "",
     state: "",
+    district: "",
     postalCode: "",
     countryCode: "TR",
     phone: "",
@@ -63,11 +89,31 @@ const [lastName] = defineField('lastName');
 const [addressLine1] = defineField('addressLine1');
 const [addressLine2] = defineField('addressLine2');
 const [city] = defineField('city');
+const [cityCode] = defineField('cityCode');
 const [state] = defineField('state');
+const [district] = defineField('district');
 const [postalCode] = defineField('postalCode');
 const [phone] = defineField('phone');
 const [countryCode] = defineField('countryCode');
 const [isDefault] = defineField('isDefault');
+
+function onCityChange(val: any) {
+  const code = String(val || '');
+  if (!code) return;
+  cityCode.value = code;
+  const found = cityOptions.value.find((c: any) => c.code === code);
+  city.value = found?.name || '';
+  district.value = '';
+  state.value = '';
+  fetchDistricts(code);
+}
+
+function onDistrictChange(val: any) {
+  const d = String(val || '');
+  if (!d) return;
+  district.value = d;
+  state.value = d;
+}
 
 // Auto-select default address
 watch(
@@ -120,7 +166,9 @@ function startEditAddress(address: any) {
       addressLine1: address.addressLine1 || "",
       addressLine2: address.addressLine2 || "",
       city: address.city || "",
-      state: address.state || "",
+      cityCode: address.cityCode || "",
+      state: address.state || address.district || "",
+      district: address.district || address.state || "",
       postalCode: address.postalCode || "",
       phone: address.phone || "",
       countryCode: address.countryCode || "TR",
@@ -128,6 +176,9 @@ function startEditAddress(address: any) {
     }
   });
   showAddressDialog.value = true;
+  if (address.cityCode) {
+    fetchDistricts(address.cityCode);
+  }
 }
 
 // Calculate totals - prices already include tax (KDV dahil)
@@ -487,14 +538,32 @@ const img = useImage();
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="space-y-2">
-              <Label for="city">Şehir *</Label>
-              <Input id="city" v-model="city" placeholder="Şehir" :class="{'border-destructive': errors.city}" />
-              <p v-if="errors.city" class="text-xs text-destructive font-medium">{{ errors.city }}</p>
+              <Label for="city">Şehir (İl) *</Label>
+              <Select :model-value="cityCode" @update:model-value="onCityChange">
+                <SelectTrigger :class="{'border-destructive': errors.city}">
+                  <SelectValue placeholder="İl seçiniz" />
+                </SelectTrigger>
+                <SelectContent class="max-h-60 overflow-y-auto">
+                  <SelectItem v-for="c in cityOptions" :key="c.code" :value="c.code">
+                    {{ c.name }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p v-if="errors.city || errors.cityCode" class="text-xs text-destructive font-medium">{{ errors.city || errors.cityCode }}</p>
             </div>
             <div class="space-y-2">
-              <Label for="state">İlçe</Label>
-              <Input id="state" v-model="state" placeholder="İlçe" :class="{'border-destructive': errors.state}" />
-              <p v-if="errors.state" class="text-xs text-destructive font-medium">{{ errors.state }}</p>
+              <Label for="district">İlçe *</Label>
+              <Select :model-value="district" :disabled="!cityCode" @update:model-value="onDistrictChange">
+                <SelectTrigger :class="{'border-destructive': errors.district}">
+                  <SelectValue :placeholder="cityCode ? 'İlçe seçiniz' : 'Önce il seçiniz'" />
+                </SelectTrigger>
+                <SelectContent class="max-h-60 overflow-y-auto">
+                  <SelectItem v-for="d in districtOptions" :key="d.name" :value="d.name">
+                    {{ d.name }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p v-if="errors.district" class="text-xs text-destructive font-medium">{{ errors.district }}</p>
             </div>
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
