@@ -42,6 +42,27 @@ const products = computed(() => productsData.value?.data || []);
       :products="products"
     />
 
+
+
+  <div class="flex w-full justify-center">
+    <div
+      class="rounded-3xl border border-neutral-200 bg-neutral-100 p-4 dark:border-neutral-800 dark:bg-neutral-900"
+    >
+      <Compare
+        first-image="https://cdn.kaft.com/mnresize/1700/1700/static/images/bag/1721_1.jpg?cacheID=1762588612000"
+        second-image="https://cdn.kaft.com/mnresize/1700/1700/static/images/bag/1723_1.jpg?cacheID=1762588612000"
+        first-content-class="object-cover object-left-top rounded-xl overflow-hidden"
+        second-content-class="object-cover object-left-top rounded-xl overflow-hidden"
+        class=" md:h-[600px] md:w-[600px]"
+        slide-mode="hover"
+      />
+    </div>
+  </div>
+
+
+
+
+
     <!-- Feature Section -->
     <DrinkifyFeatureSection />
 
