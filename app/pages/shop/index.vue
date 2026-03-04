@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Filter, X } from "lucide-vue-next";
+import { refDebounced } from "@vueuse/core";
 
 definePageMeta({
   layout: "default",
@@ -19,6 +20,9 @@ const filters = ref({
 const page = ref(1);
 const showFilters = ref(false);
 
+// Debounce search input to reduce API calls
+const debouncedSearch = refDebounced(computed(() => filters.value.search), 500);
+
 // Fetch categories + products in parallel
 const [{ data: categoriesData }, { data: productsData, pending }] = await Promise.all([
   useFetch("/api/categories", {
@@ -28,11 +32,11 @@ const [{ data: categoriesData }, { data: productsData, pending }] = await Promis
     query: computed(() => ({
       page: page.value,
       limit: 12,
-      search: filters.value.search || undefined,
+      search: debouncedSearch.value || undefined,
       sortBy: filters.value.sortBy,
       sortOrder: filters.value.sortOrder,
     })),
-    watch: [filters, page],
+    watch: [debouncedSearch, () => filters.value.sortBy, () => filters.value.sortOrder, page],
   }),
 ]);
 
