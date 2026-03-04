@@ -63,6 +63,7 @@ const imageUrl = computed(() => {
       <motion.img
         :src="imageUrl"
         :alt="product.title"
+        loading="lazy"
         class="relative h-[280px] w-auto object-contain z-20 pb-2"
         :animate="isHovered ? { y: -10 } : { y: 0 }"
         :transition="{ type: 'spring', stiffness: 300, damping: 20 }"
