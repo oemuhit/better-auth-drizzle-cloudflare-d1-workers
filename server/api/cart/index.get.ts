@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { cart, cartItem, product, productVariant } from "../../db/schema";
 import { serverAuth } from "../../utils/auth";
@@ -22,17 +22,23 @@ export default defineEventHandler(async (event) => {
         const enrichedItems = [];
         let subtotal = 0;
         
+        // Fetch all products in a single query to avoid N+1 issue
+        const productIds = [...new Set(guestCart.items.map((item: any) => item.productId).filter(Boolean))] as string[];
+        const productsData = productIds.length > 0 
+          ? await db.query.product.findMany({
+              where: inArray(product.id, productIds),
+              with: {
+                variants: true,
+                images: true
+              }
+            })
+          : [];
+        
         for (const item of guestCart.items) {
-          const productData = await db.query.product.findFirst({
-            where: eq(product.id, item.productId),
-            with: {
-              variants: true,
-              images: true
-            }
-          });
+          const productData = productsData.find((p) => p.id === item.productId);
           
           if (productData) {
-            const variant = productData.variants.find(v => v.id === item.productVariantId);
+            const variant = productData.variants.find((v: any) => v.id === item.productVariantId);
             const price = variant?.price ?? productData.basePrice ?? 0;
             const itemTotal = price * item.quantity;
             subtotal += itemTotal;

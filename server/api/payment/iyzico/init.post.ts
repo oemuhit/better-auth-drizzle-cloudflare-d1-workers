@@ -331,6 +331,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Create order items (for both new and updated orders)
+    const orderItemsToInsert = [];
     for (const item of userCart.items) {
       const itemPrice =
         item.productVariant?.price ?? item.product.basePrice ?? 0;
@@ -348,7 +349,7 @@ export default defineEventHandler(async (event) => {
         if (parts.length > 0) variantInfo = parts.join(", ");
       }
 
-      await db.insert(orderItem).values({
+      orderItemsToInsert.push({
         orderId: activeOrder!.id,
         productId: item.productId,
         productVariantId: item.productVariantId,
@@ -359,6 +360,10 @@ export default defineEventHandler(async (event) => {
         subtotal: itemTotal,
         total: itemTotal,
       });
+    }
+
+    if (orderItemsToInsert.length > 0) {
+      await db.insert(orderItem).values(orderItemsToInsert);
     }
 
     // Initialize iyzico
