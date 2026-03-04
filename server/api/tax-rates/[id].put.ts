@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { taxRate } from "../../db/schema";
+import { invalidateTaxRateCache } from "../../utils/cacheInvalidation";
 import { requireAdmin } from "~~/server/utils/admin";
 
 export default defineEventHandler(async (event) => {
@@ -53,6 +54,8 @@ export default defineEventHandler(async (event) => {
       .set(updateData)
       .where(eq(taxRate.id, id))
       .returning();
+
+    await invalidateTaxRateCache();
 
     return {
       success: true,

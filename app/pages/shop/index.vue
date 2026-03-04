@@ -19,22 +19,22 @@ const filters = ref({
 const page = ref(1);
 const showFilters = ref(false);
 
-// Fetch categories
-const { data: categoriesData } = await useFetch("/api/categories", {
-  query: { parentOnly: true },
-});
-
-// Fetch products
-const { data: productsData, pending } = await useFetch("/api/products", {
-  query: computed(() => ({
-    page: page.value,
-    limit: 12,
-    search: filters.value.search || undefined,
-    sortBy: filters.value.sortBy,
-    sortOrder: filters.value.sortOrder,
-  })),
-  watch: [filters, page],
-});
+// Fetch categories + products in parallel
+const [{ data: categoriesData }, { data: productsData, pending }] = await Promise.all([
+  useFetch("/api/categories", {
+    query: { parentOnly: true },
+  }),
+  useFetch("/api/products", {
+    query: computed(() => ({
+      page: page.value,
+      limit: 12,
+      search: filters.value.search || undefined,
+      sortBy: filters.value.sortBy,
+      sortOrder: filters.value.sortOrder,
+    })),
+    watch: [filters, page],
+  }),
+]);
 
 const categories = computed(() => categoriesData.value?.data || []);
 const products = computed(() => productsData.value?.data || []);

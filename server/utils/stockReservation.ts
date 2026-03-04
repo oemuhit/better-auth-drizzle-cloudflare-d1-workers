@@ -140,6 +140,10 @@ export async function confirmReservation(
       .where(eq(stockReservation.id, reservation.id));
   }
 
+  // Invalidate product cache so pages reflect new stock levels
+  const { invalidateProductCache } = await import("./cacheInvalidation");
+  await invalidateProductCache();
+
   return { success: true };
 }
 

@@ -6,7 +6,7 @@ import { serverAuth } from "../../utils/auth";
 /** Mağazada listelenen ürün durumları (active, backordered, out_of_stock) */
 const VISIBLE_IN_STORE_STATUSES = ["active", "backordered", "out_of_stock"] as const;
 
-export default defineEventHandler(async (event) => {
+export default defineCachedEventHandler(async (event) => {
   const db = useDb(event);
   const query = getQuery(event);
   const auth = serverAuth(event);
@@ -109,4 +109,14 @@ export default defineEventHandler(async (event) => {
       data: error.message,
     });
   }
+}, {
+  maxAge: 60, // 1 minute
+  name: "products-list",
+  getKey: (event) => {
+    const q = getQuery(event);
+    return `${q.page || 1}:${q.limit || 12}:${q.categoryId || ""}:${q.search || ""}:${q.sortBy || "createdAt"}:${q.sortOrder || "desc"}`;
+  },
+  shouldBypassCache: (event) => {
+    return getQuery(event).includeAll === "true";
+  },
 });

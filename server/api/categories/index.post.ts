@@ -1,5 +1,6 @@
 import { useDb } from "../../utils/db";
 import { category } from "../../db/schema";
+import { invalidateCategoryCache } from "../../utils/cacheInvalidation";
 import { requireAdmin } from "~~/server/utils/admin";
 
 export default defineEventHandler(async (event) => {
@@ -35,6 +36,8 @@ export default defineEventHandler(async (event) => {
         sort: body.sort ?? 0,
       })
       .returning();
+
+    await invalidateCategoryCache();
 
     return {
       success: true,

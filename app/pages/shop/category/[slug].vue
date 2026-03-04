@@ -38,23 +38,23 @@ const filters = ref({
 const page = ref(1);
 const showFilters = ref(false);
 
-// Fetch products in this category
-const { data: productsData, pending } = await useFetch("/api/products", {
-  query: computed(() => ({
-    page: page.value,
-    limit: 12,
-    categoryId: category.value?.id,
-    search: filters.value.search || undefined,
-    sortBy: filters.value.sortBy,
-    sortOrder: filters.value.sortOrder,
-  })),
-  watch: [filters, page, category],
-});
-
-// Fetch all categories for sidebar
-const { data: categoriesData } = await useFetch("/api/categories", {
-  query: { parentOnly: true },
-});
+// Fetch products + sidebar categories in parallel
+const [{ data: productsData, pending }, { data: categoriesData }] = await Promise.all([
+  useFetch("/api/products", {
+    query: computed(() => ({
+      page: page.value,
+      limit: 12,
+      categoryId: category.value?.id,
+      search: filters.value.search || undefined,
+      sortBy: filters.value.sortBy,
+      sortOrder: filters.value.sortOrder,
+    })),
+    watch: [filters, page, category],
+  }),
+  useFetch("/api/categories", {
+    query: { parentOnly: true },
+  }),
+]);
 
 const categories = computed(() => categoriesData.value?.data || []);
 const products = computed(() => productsData.value?.data || []);

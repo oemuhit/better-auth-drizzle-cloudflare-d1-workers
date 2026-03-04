@@ -10,17 +10,19 @@ useHead({
   title: "Admin Dashboard",
 });
 
-// Fetch stats (in a real app, these would come from dedicated API endpoints)
-const { data: productsData } = await useFetch("/api/products", {
-  query: { includeAll: true, limit: 1 },
-});
-const { data: ordersData } = await useFetch("/api/admin/orders", {
-  query: { limit: 500 },
-  headers: useRequestHeaders(['cookie']),
-});
-const { data: categoriesData } = await useFetch("/api/categories", {
-  query: { includeInactive: true },
-});
+// Fetch stats in parallel
+const [{ data: productsData }, { data: ordersData }, { data: categoriesData }] = await Promise.all([
+  useFetch("/api/products", {
+    query: { includeAll: true, limit: 1 },
+  }),
+  useFetch("/api/admin/orders", {
+    query: { limit: 500 },
+    headers: useRequestHeaders(['cookie']),
+  }),
+  useFetch("/api/categories", {
+    query: { includeInactive: true },
+  }),
+]);
 
 const totalProducts = computed(
   () => productsData.value?.pagination?.total || 0,

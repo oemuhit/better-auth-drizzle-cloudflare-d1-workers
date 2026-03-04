@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { taxRate } from "../../db/schema";
+import { invalidateTaxRateCache } from "../../utils/cacheInvalidation";
 import { requireAdmin } from "~~/server/utils/admin";
 
 export default defineEventHandler(async (event) => {
@@ -34,6 +35,8 @@ export default defineEventHandler(async (event) => {
         isActive: body.isActive ?? true,
       })
       .returning();
+
+    await invalidateTaxRateCache();
 
     return {
       success: true,

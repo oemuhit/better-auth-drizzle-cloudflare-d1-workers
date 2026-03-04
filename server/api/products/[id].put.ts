@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { product, productVariant, productImage } from "../../db/schema";
 import { createProductRequestSchema } from "../../utils/validation";
+import { invalidateProductCache } from "../../utils/cacheInvalidation";
 
 import { requireAdmin } from "~~/server/utils/admin";
 
@@ -119,6 +120,8 @@ export default defineEventHandler(async (event) => {
         taxRate: true,
       },
     });
+
+    await invalidateProductCache();
 
     return {
       success: true,

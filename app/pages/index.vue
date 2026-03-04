@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ArrowRight } from "lucide-vue-next";
 import { motion } from "motion-v";
+
+// Lazy-load heavy below-the-fold components
+const BagVisualizer = defineAsyncComponent(() => import("~/components/shop/BagVisualizer.vue"));
+const Compare = defineAsyncComponent(() => import("~/components/ui/compare/Compare.vue"));
+
 definePageMeta({
   layout: "default",
 });
@@ -9,15 +14,15 @@ useHead({
   title: "Ana Sayfa | Shop",
 });
 
-// Fetch categories
-const { data: categoriesData } = await useFetch("/api/categories", {
-  query: { parentOnly: true },
-});
-
-// Fetch popular products
-const { data: productsData } = await useFetch("/api/products", {
-  query: { limit: 8, sortBy: "createdAt", sortOrder: "desc" },
-});
+// Fetch categories + products in parallel
+const [{ data: categoriesData }, { data: productsData }] = await Promise.all([
+  useFetch("/api/categories", {
+    query: { parentOnly: true },
+  }),
+  useFetch("/api/products", {
+    query: { limit: 8, sortBy: "createdAt", sortOrder: "desc" },
+  }),
+]);
 
 const categories = computed(() => categoriesData.value?.data || []);
 const products = computed(() => productsData.value?.data || []);

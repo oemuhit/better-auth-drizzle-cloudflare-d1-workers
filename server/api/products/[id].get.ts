@@ -6,7 +6,7 @@ import { serverAuth } from "../../utils/auth";
 /** Detay sayfasında görülebilen durumlar (hidden = sadece doğrudan link) */
 const VIEWABLE_STATUSES = ["active", "backordered", "out_of_stock", "hidden"] as const;
 
-export default defineEventHandler(async (event) => {
+export default defineCachedEventHandler(async (event) => {
   const db = useDb(event);
   const id = getRouterParam(event, "id");
   const query = getQuery(event);
@@ -89,4 +89,11 @@ export default defineEventHandler(async (event) => {
       data: error.message,
     });
   }
+}, {
+  maxAge: 30, // 30 seconds
+  name: "product-detail",
+  getKey: (event) => getRouterParam(event, "id") || "",
+  shouldBypassCache: (event) => {
+    return getQuery(event).includeInactiveVariants === "true";
+  },
 });

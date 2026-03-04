@@ -45,6 +45,11 @@
 			"binding": "GUEST_CARTS",
 			"id": "9126e3c226ff420b964c0279309218bc",
 			"remote": true
+		},
+		{
+			"binding": "CACHE",
+			"id": "5df76a68d19b4c73ac96eb860256f74b",
+			"remote": true
 		}
 	],
 	/**

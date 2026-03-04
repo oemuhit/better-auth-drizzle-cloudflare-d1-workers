@@ -37,6 +37,19 @@ export default defineNuxtConfig({
     runtimeConfig: {
       bodySizeLimit: "10mb",
     },
+    // Cache storage — Cloudflare KV (remote in both dev and production)
+    storage: {
+      cache: {
+        driver: "cloudflare-kv-binding",
+        binding: "CACHE",
+      },
+    },
+  },
+
+  // Route-level caching for static/semi-static endpoints
+  routeRules: {
+    "/api/locations/**": { cache: { maxAge: 86400 } },  // 24 hours
+    "/api/tax-rates": { cache: { maxAge: 3600 } },      // 1 hour
   },
 
   build: {

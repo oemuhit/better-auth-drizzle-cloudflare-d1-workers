@@ -23,7 +23,10 @@ definePageMeta({
   middleware: "auth",
 });
 
-const { data: profileData, refresh } = await useFetch("/api/user/profile");
+const [{ data: profileData, refresh }, { data: citiesData }] = await Promise.all([
+  useFetch("/api/user/profile"),
+  useFetch('/api/locations/cities'),
+]);
 const addresses = computed(() => profileData.value?.data.addresses || []);
 
 const isAdding = ref(false);
@@ -44,7 +47,6 @@ import { addressSchema as rawAddressSchema } from "../../../server/utils/validat
 const addressSchema = toTypedSchema(rawAddressSchema);
 
 // City & district data — fetched from Geliver API
-const { data: citiesData } = await useFetch('/api/locations/cities');
 const cityOptions = computed(() =>
   (citiesData.value as any[] ?? []).map((c: any) => ({ code: c.code, name: c.name }))
 );

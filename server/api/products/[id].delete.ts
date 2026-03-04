@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { useDb } from "../../utils/db";
 import { product } from "../../db/schema";
+import { invalidateProductCache } from "../../utils/cacheInvalidation";
 
 import { requireAdmin } from "~~/server/utils/admin";
 
@@ -31,6 +32,8 @@ export default defineEventHandler(async (event) => {
 
     // Delete product (variants and images will be cascade deleted)
     await db.delete(product).where(eq(product.id, id));
+
+    await invalidateProductCache();
 
     return {
       success: true,
