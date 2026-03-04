@@ -124,21 +124,149 @@ useHead({
     <section class="rounded-xl border bg-card p-6">
       <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
         <ShoppingCart class="h-5 w-5" />
-        Siparişler
+        Siparişler — Yaşam Döngüsü
       </h2>
-      <p class="text-muted-foreground mb-3">
-        Müşteri siparişleri listelenir; sipariş detayında adres, ödeme durumu, sipariş kalemleri ve toplamlar görüntülenir.
+      <p class="text-muted-foreground mb-4">
+        Her sipariş üç bağımsız durum boyutuna sahiptir. Bu boyutlar birbirinden ayrı güncellenir ve birlikte siparişin genel durumunu belirler.
       </p>
-      <ul class="space-y-2 text-muted-foreground">
-        <li class="flex items-start gap-2">
-          <CheckCircle2 class="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-          Sipariş listesi ve filtreleme.
-        </li>
-        <li class="flex items-start gap-2">
-          <CheckCircle2 class="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-          Sipariş detayında durum ve notlar takip edilebilir.
-        </li>
-      </ul>
+
+      <!-- 3 Status Dimensions -->
+      <div class="grid gap-4 md:grid-cols-3 mb-6">
+        <!-- Sipariş Durumu -->
+        <div class="rounded-lg border p-4 space-y-2">
+          <p class="font-semibold text-foreground text-sm">Sipariş Durumu</p>
+          <dl class="text-xs space-y-1.5">
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">Bekliyor</dt>
+              <dd class="text-muted-foreground">Sipariş oluşturuldu, ödeme henüz yapılmadı.</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">İşleniyor</dt>
+              <dd class="text-muted-foreground">Ödeme alındı, kargo hazırlanıyor.</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">Tamamlandı</dt>
+              <dd class="text-muted-foreground">Sipariş teslim edildi ve kapatıldı.</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">İptal Edildi</dt>
+              <dd class="text-muted-foreground">Sipariş veya kargo iptal edildi.</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Ödeme Durumu -->
+        <div class="rounded-lg border p-4 space-y-2">
+          <p class="font-semibold text-foreground text-sm">Ödeme Durumu</p>
+          <dl class="text-xs space-y-1.5">
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">Ödenmedi</dt>
+              <dd class="text-muted-foreground">Ödeme hiç başlatılmadı.</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">Bekliyor</dt>
+              <dd class="text-muted-foreground">Ödeme formu açıldı, sonuç henüz gelmedi.</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">Ödendi</dt>
+              <dd class="text-muted-foreground">iyzico ödemesi onaylandı.</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">İade Edildi</dt>
+              <dd class="text-muted-foreground">Ödeme iade edildi (admin tarafından).</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Teslimat Durumu -->
+        <div class="rounded-lg border p-4 space-y-2">
+          <p class="font-semibold text-foreground text-sm">Teslimat Durumu</p>
+          <dl class="text-xs space-y-1.5">
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">Açık</dt>
+              <dd class="text-muted-foreground">Henüz kargo oluşturulmadı.</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">Hazırlanıyor</dt>
+              <dd class="text-muted-foreground">Kargo oluşturuldu / hazırlanıyor.</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">Tamamlandı</dt>
+              <dd class="text-muted-foreground">Teslim edildi.</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-medium text-foreground w-24 shrink-0">Beklemede</dt>
+              <dd class="text-muted-foreground">Kargo askıya alındı (sorun var).</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Otomatik Durum Değişiklikleri -->
+      <div class="rounded-lg bg-muted/50 p-4 mb-6 space-y-3">
+        <p class="font-medium text-foreground">Otomatik Durum Değişiklikleri</p>
+        <p class="text-xs text-muted-foreground">Aşağıdaki durum geçişleri sistem tarafından otomatik yapılır:</p>
+        <dl class="text-xs space-y-2">
+          <div class="flex items-start gap-2">
+            <CheckCircle2 class="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+            <div>
+              <dt class="inline font-medium text-foreground">Ödeme başarılı (iyzico callback):</dt>
+              <dd class="inline text-muted-foreground ml-1">Sipariş → İşleniyor, Ödeme → Ödendi, stok düşer, sepet temizlenir, kargo oluşturulur.</dd>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <CheckCircle2 class="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+            <div>
+              <dt class="inline font-medium text-foreground">Kargo iptal edildiğinde:</dt>
+              <dd class="inline text-muted-foreground ml-1">Sipariş → İptal Edildi, Teslimat → Açık, kargo bilgileri temizlenir.</dd>
+            </div>
+          </div>
+        </dl>
+        <p class="text-xs text-muted-foreground mt-2">
+          Diğer tüm geçişler (İşleniyor → Tamamlandı, Teslimat → Tamamlandı, Ödeme → İade vb.) <strong class="text-foreground">admin tarafından manuel</strong> yapılır.
+        </p>
+      </div>
+
+      <!-- Kargo Akışı -->
+      <div class="rounded-lg bg-muted/50 p-4 mb-6 space-y-3">
+        <p class="font-medium text-foreground">Kargo Akışı (Geliver)</p>
+        <ol class="text-xs text-muted-foreground space-y-2 list-decimal list-inside">
+          <li>Ödeme onaylandığında sistem otomatik kargo oluşturur ve takip No alır.</li>
+          <li>Otomatik kargo başarısız olursa, sipariş detayında <strong class="text-foreground">"Kargo Tekliflerini Getir"</strong> butonu ile manuel başlatın.</li>
+          <li>Gelen tekliflerden birini seçip <strong class="text-foreground">"Seçilen Teklifi Satın Al"</strong> ile onaylayın.</li>
+          <li>Takip numarası, barkod ve etiket otomatik sipariş kaydına yazılır.</li>
+          <li>Müşteri sipariş detayında takip linkini görür.</li>
+          <li>Gerekirse <strong class="text-foreground">"Kargo Bilgisini Yenile"</strong> ile Geliver'dan güncelleme alınabilir.</li>
+        </ol>
+      </div>
+
+      <!-- İptal & İade -->
+      <div class="rounded-lg bg-muted/50 p-4 mb-6 space-y-3">
+        <p class="font-medium text-foreground">İptal ve İade Senaryoları</p>
+        <dl class="text-xs space-y-2">
+          <div class="flex items-start gap-2">
+            <span class="text-red-500 font-bold shrink-0">İPTAL</span>
+            <dd class="text-muted-foreground">"Kargoyu İptal Et" → Geliver'da kargo iptal edilir, sipariş İptal Edildi olur, tüm kargo bilgileri temizlenir. İade oluşturulduysa iptal yapılamaz.</dd>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-amber-500 font-bold shrink-0">İADE</span>
+            <dd class="text-muted-foreground">"İade Kargosu Oluştur" → Geliver'da iade kargosu açılır, iade barkodu ve etiket oluşturulur. Müşteri bu etiketi kullanarak ürünü geri gönderir. İade sonrası ödeme durumunu manuel olarak "İade Edildi" yapın.</dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Kullanım Senaryoları -->
+      <div class="rounded-lg bg-muted/50 p-4 space-y-3">
+        <p class="font-medium text-foreground">Sipariş Kullanım Senaryoları</p>
+        <ul class="text-xs text-muted-foreground space-y-1.5">
+          <li>• <strong class="text-foreground">Normal akış:</strong> Müşteri öder → İşleniyor + Ödendi → Kargo otomatik oluşur → Teslim sonrası → Tamamlandı (admin)</li>
+          <li>• <strong class="text-foreground">Kargo otomatik oluşmadıysa:</strong> Sipariş detayı → "Kargo Tekliflerini Getir" → Teklif seç → Satın al</li>
+          <li>• <strong class="text-foreground">Müşteri iptal isterse (kargo oluşmadan):</strong> Sipariş durumunu İptal Edildi yapın, ödeme durumunu İade Edildi yapın, iyzico panelinden ödemeyi iade edin.</li>
+          <li>• <strong class="text-foreground">Kargo gönderildikten sonra iptal:</strong> "Kargoyu İptal Et" → Geliver kargo iptal edilir, sipariş otomatik İptal Edildi olur. iyzico panelinden ödemeyi iade edin.</li>
+          <li>• <strong class="text-foreground">Müşteri ürünü iade etmek isterse:</strong> "İade Kargosu Oluştur" → İade etiketi oluşur → Müşteri etiketi sipariş sayfasından indirir → Ürün geldiğinde ödeme durumunu İade Edildi yapın.</li>
+          <li>• <strong class="text-foreground">Tamamlandı işareti:</strong> Ürün teslim edildi, iade süresi geçti → Sipariş → Tamamlandı, Teslimat → Tamamlandı.</li>
+        </ul>
+      </div>
     </section>
 
     <!-- Müşteriler -->

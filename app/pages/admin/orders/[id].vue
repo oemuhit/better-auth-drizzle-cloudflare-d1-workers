@@ -182,6 +182,7 @@ const showCancelConfirm = ref(false);
 async function cancelShipment() {
   isCancellingShipment.value = true;
   cancelShipmentError.value = null;
+  shipmentSuccess.value = false;
   showCancelConfirm.value = false;
   try {
     await $fetch(`/api/admin/orders/${id}/cancel-shipment`, { method: "POST" });
