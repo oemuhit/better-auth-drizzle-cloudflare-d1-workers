@@ -103,6 +103,7 @@ const variantInfo = computed(() => {
           size="icon"
           class="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
           :disabled="isLoading"
+          aria-label="Ürünü sepetten çıkar"
           @click="handleRemove"
         >
           <X class="h-4 w-4" />
@@ -117,6 +118,7 @@ const variantInfo = computed(() => {
             size="icon"
             class="h-8 w-8 rounded-full"
             :disabled="isLoading || localQuantity <= 1"
+            aria-label="Miktarı azalt"
             @click="handleQuantityChange(localQuantity - 1)"
           >
             <Minus class="h-3 w-3" />
@@ -129,6 +131,7 @@ const variantInfo = computed(() => {
             size="icon"
             class="h-8 w-8 rounded-full"
             :disabled="isLoading"
+            aria-label="Miktarı artır"
             @click="handleQuantityChange(localQuantity + 1)"
           >
             <Plus class="h-3 w-3" />
