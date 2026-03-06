@@ -174,6 +174,7 @@ const reviewCount = computed(() => Math.floor(Math.random() * 10));
       >
         <Button
           size="icon"
+          aria-label="Hızlı Ekle"
           variant="secondary"
           class="h-9 w-9 rounded-full shadow-lg"
           @click.prevent="handleQuickAdd"
@@ -183,6 +184,7 @@ const reviewCount = computed(() => Math.floor(Math.random() * 10));
         </Button>
         <Button
           size="icon"
+          aria-label="Favorilere Ekle/Çıkar"
           variant="secondary"
           class="h-9 w-9 rounded-full shadow-lg"
           :class="{ 'text-red-500': inWishlist }"

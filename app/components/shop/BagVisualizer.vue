@@ -165,10 +165,10 @@ function stopDrag() {
         >
           <!-- Rotation Handle Interface -->
           <div v-if="selectedItemId === item.id" class="absolute -top-10 left-1/2 -translate-x-1/2 flex gap-2 p-1 bg-background border border-border rounded-full shadow-lg z-[60]">
-             <Button size="icon" variant="ghost" class="h-8 w-8 rounded-full" @mousedown.stop @click.stop="rotateItem(item.id, -45)">
+             <Button size="icon" variant="ghost" aria-label="Sola döndür" class="h-8 w-8 rounded-full" @mousedown.stop @click.stop="rotateItem(item.id, -45)">
               <RotateCw class="h-4 w-4 scale-x-[-1]" />
             </Button>
-            <Button size="icon" variant="ghost" class="h-8 w-8 rounded-full" @mousedown.stop @click.stop="rotateItem(item.id, 45)">
+            <Button size="icon" variant="ghost" aria-label="Sağa döndür" class="h-8 w-8 rounded-full" @mousedown.stop @click.stop="rotateItem(item.id, 45)">
               <RotateCw class="h-4 w-4" />
             </Button>
           </div>
