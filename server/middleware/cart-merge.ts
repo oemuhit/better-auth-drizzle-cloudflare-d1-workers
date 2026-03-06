@@ -59,25 +59,27 @@ export default defineEventHandler(async (event) => {
     // Efficiently merge items
     const existingItems = userCart.items || [];
     
-    for (const guestItem of guestCart.items) {
+    const mergePromises = guestCart.items.map((guestItem: any) => {
       const existing = existingItems.find(i => 
         i.productId === guestItem.productId && 
         i.productVariantId === (guestItem.productVariantId || null)
       );
 
       if (existing) {
-        await db.update(cartItem)
+        return db.update(cartItem)
           .set({ quantity: existing.quantity + guestItem.quantity })
           .where(eq(cartItem.id, existing.id));
       } else {
-        await db.insert(cartItem).values({
+        return db.insert(cartItem).values({
           cartId: userCart.id,
           productId: guestItem.productId,
           productVariantId: guestItem.productVariantId || null,
           quantity: guestItem.quantity
         });
       }
-    }
+    });
+
+    await Promise.all(mergePromises);
 
     // Cleanup guest cart
     await kv.delete(`cart:${cartId}`);

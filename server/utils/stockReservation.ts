@@ -16,13 +16,14 @@ interface ReservationResult {
  * Returns success if stock is available and reserved.
  */
 export async function reserveStock(
-  event: H3Event,
+  event: H3Event | null,
   orderId: string,
   variantId: string | null,
   quantity: number,
-  productId?: string
+  productId?: string,
+  tx?: any
 ): Promise<ReservationResult> {
-  const db = useDb(event);
+  const db = tx || useDb(event as H3Event);
   const expiresAt = Math.floor(Date.now() / 1000) + RESERVATION_TTL_MINUTES * 60;
 
   // Normalize IDs - ensure empty strings are treated as null
@@ -151,10 +152,11 @@ export async function confirmReservation(
  * Release a reservation
  */
 export async function releaseReservation(
-  event: H3Event,
-  orderId: string
+  event: H3Event | null,
+  orderId: string,
+  tx?: any
 ): Promise<void> {
-  const db = useDb(event);
+  const db = tx || useDb(event as H3Event);
 
   await db
     .delete(stockReservation)

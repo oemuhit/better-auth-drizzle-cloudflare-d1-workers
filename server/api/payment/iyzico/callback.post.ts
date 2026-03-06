@@ -77,12 +77,11 @@ export default defineEventHandler(async (event) => {
       .where(eq(order.id, existingOrder.id));
 
     // 2. Confirm stock reservation (D1-based) - decrements stock atomically
-    const { confirmReservation } =
-      await import("../../../utils/stockReservation");
-    const conversationId = result.conversationId;
+    const { confirmReservation } = await import("../../../utils/stockReservation");
 
-    if (conversationId) {
-      await confirmReservation(event, conversationId);
+    // We used existingOrder.id to reserve the stock inside order.service.ts
+    if (existingOrder.id) {
+      await confirmReservation(event, existingOrder.id);
     }
 
     // 3. Clear the user's cart (D1 for logged-in, KV for guests)
