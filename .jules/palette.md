@@ -1,0 +1,2 @@
+# Palette's Journal
+## 2026-03-07 - Add ARIA Labels to Icon Buttons\n**Learning:** The main navigation bar relies heavily on icon-only buttons (Search, Wishlist, User Profile, Mobile Menu) which lack `aria-label` attributes, impacting accessibility for screen reader users.\n**Action:** Add descriptive `aria-label` attributes to all icon-only `<Button>` components in `app/components/layout/Navbar.vue` to ensure screen readers can accurately interpret their function.
