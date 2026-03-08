@@ -26,7 +26,7 @@ watch(isOpen, async (open) => {
   <Sheet v-model:open="isOpen">
     <SheetTrigger as-child>
       <slot name="trigger">
-        <Button variant="outline" size="icon" class="relative">
+        <Button aria-label="Sepet" variant="outline" size="icon" class="relative">
           <ShoppingCart class="h-5 w-5" />
           <span
             v-if="itemCount > 0"
