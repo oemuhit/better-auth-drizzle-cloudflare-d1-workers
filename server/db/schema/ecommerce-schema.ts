@@ -5,6 +5,7 @@ import {
   integer,
   real,
   index,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import { user } from "./auth-schema";
 
@@ -463,6 +464,11 @@ export const cartItem = sqliteTable(
   (table) => [
     index("cart_item_cart_idx").on(table.cartId),
     index("cart_item_product_idx").on(table.productId),
+    uniqueIndex("idx_cart_item_unique").on(
+      table.cartId,
+      table.productId,
+      table.productVariantId,
+    ),
   ],
 );
 

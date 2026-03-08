@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `idx_cart_item_unique` ON `cart_item` (`cart_id`,`product_id`,`product_variant_id`);
