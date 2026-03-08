@@ -9,7 +9,10 @@
     "preview": "npm run build && wrangler dev",
     "postinstall": "nuxt prepare",
     "deploy": "npm run build && wrangler deploy",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply nuxtdb --local",
+    "db:migrate:remote": "wrangler d1 migrations apply nuxtdb --remote"
   },
   "dependencies": {
     "@aspect-ratio/core": "^1.0.0",
@@ -21,6 +24,7 @@
     "@nuxt/image": "^2.0.0",
     "@tanstack/vue-table": "^8.21.3",
     "@tiptap/extension-image": "^3.19.0",
+    "@tiptap/extension-placeholder": "^3.20.1",
     "@tiptap/extension-text-align": "^3.19.0",
     "@tiptap/pm": "^3.19.0",
     "@tiptap/starter-kit": "^3.19.0",

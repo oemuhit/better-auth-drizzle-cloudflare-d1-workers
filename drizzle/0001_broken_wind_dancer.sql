@@ -1,1 +1,0 @@
--- ALTER TABLE `users_table` ADD `address` text NOT NULL;
