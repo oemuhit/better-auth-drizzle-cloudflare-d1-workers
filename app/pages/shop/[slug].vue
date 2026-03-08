@@ -158,13 +158,11 @@ const reviewCount = 12;
           <div
             class="aspect-square rounded-2xl overflow-hidden bg-muted relative group"
           >
-
             <NuxtImg
               v-if="mainImage"
               :src="mainImage.url"
               :alt="mainImage.alt || (product?.title ?? '')"
               preset="large"
-
               class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
             <!-- Wishlist Button -->
@@ -213,10 +211,12 @@ const reviewCount = 12;
             >
               {{ product.category.title }}
             </NuxtLink>
-            <h1 class="text-3xl lg:text-4xl font-bold mt-2 flex items-center gap-3">
+            <h1
+              class="text-3xl lg:text-4xl font-bold mt-2 flex items-center gap-3"
+            >
               {{ product.title }}
-              <NuxtLink 
-                v-if="session?.user" 
+              <NuxtLink
+                v-if="session?.user"
                 :to="`/admin/products/${product.id}/edit`"
                 class="text-muted-foreground hover:text-primary transition-colors"
                 title="Ürünü Düzenle"
@@ -288,7 +288,11 @@ const reviewCount = 12;
             v-if="product.shortDescription || product.description"
             class="text-muted-foreground line-clamp-3"
           >
-            {{ product.shortDescription || product.description?.replace(/<[^>]*>?/gm, '') || '' }}
+            {{
+              product.shortDescription ||
+              product.description?.replace(/<[^>]*>?/gm, "") ||
+              ""
+            }}
           </p>
 
           <!-- Variants -->
@@ -302,10 +306,17 @@ const reviewCount = 12;
 
           <!-- Stock / Status -->
           <div v-if="product" class="flex flex-wrap items-center gap-2">
-            <Badge v-if="product.status === 'backordered'" variant="secondary" class="bg-amber-500/20 text-amber-800 dark:text-amber-200">
+            <Badge
+              v-if="product.status === 'backordered'"
+              variant="secondary"
+              class="bg-amber-500/20 text-amber-800 dark:text-amber-200"
+            >
               Ön sipariş
             </Badge>
-            <Badge v-else-if="product.status === 'out_of_stock'" variant="secondary">
+            <Badge
+              v-else-if="product.status === 'out_of_stock'"
+              variant="secondary"
+            >
               Stokta yok
             </Badge>
             <template v-else>
@@ -313,10 +324,15 @@ const reviewCount = 12;
                 class="h-3 w-3 rounded-full"
                 :class="product.inStock ? 'bg-green-500' : 'bg-red-500'"
               />
-              <span :class="product.inStock ? 'text-green-600' : 'text-red-600'">
+              <span
+                :class="product.inStock ? 'text-green-600' : 'text-red-600'"
+              >
                 {{ product.inStock ? "Stokta" : "Stokta Yok" }}
               </span>
-              <span v-if="product.inStock" class="text-sm text-muted-foreground">
+              <span
+                v-if="product.inStock"
+                class="text-sm text-muted-foreground"
+              >
                 ({{ product.totalStock }} adet)
               </span>
             </template>
@@ -337,10 +353,9 @@ const reviewCount = 12;
             />
           </div>
 
-    <div v-if="product.description">
-              <TiptapContent :content="product.description" />
-            </div>
-
+          <div v-if="product.description">
+            <TiptapContent :content="product.description" />
+          </div>
 
           <!-- Features -->
           <div class="grid grid-cols-3 gap-4 pt-4">
