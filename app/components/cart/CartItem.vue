@@ -99,6 +99,7 @@ const variantInfo = computed(() => {
 
         <!-- Remove Button -->
         <Button
+          aria-label="Ürünü sil"
           variant="ghost"
           size="icon"
           class="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
@@ -113,6 +114,7 @@ const variantInfo = computed(() => {
         <!-- Quantity Controls -->
         <div class="flex items-center border rounded-full">
           <Button
+            aria-label="Miktarı azalt"
             variant="ghost"
             size="icon"
             class="h-8 w-8 rounded-full"
@@ -125,6 +127,7 @@ const variantInfo = computed(() => {
             localQuantity
           }}</span>
           <Button
+            aria-label="Miktarı artır"
             variant="ghost"
             size="icon"
             class="h-8 w-8 rounded-full"
