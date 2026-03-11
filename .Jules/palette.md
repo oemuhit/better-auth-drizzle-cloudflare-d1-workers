@@ -1,0 +1,1 @@
+## 2024-03-20 - Initial setup\n**Learning:** This is a Nuxt application using Tailwind CSS and shadcn-vue. Need to find UI files to improve.\n**Action:** Started looking for accessibility improvements in components.
