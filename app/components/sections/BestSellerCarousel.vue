@@ -49,7 +49,7 @@ const scroll = (direction: 'left' | 'right') => {
         type="button"
         @click.stop.prevent="scroll('left')"
         class="absolute left-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-600 hover:text-primary hover:bg-gray-50 transition-all duration-300 cursor-pointer"
-        aria-label="Previous"
+        aria-label="Önceki"
       >
         <ChevronLeft class="h-6 w-6" />
       </button>
@@ -58,7 +58,7 @@ const scroll = (direction: 'left' | 'right') => {
         type="button"
         @click.stop.prevent="scroll('right')"
         class="absolute right-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-600 hover:text-primary hover:bg-gray-50 transition-all duration-300 cursor-pointer"
-        aria-label="Next"
+        aria-label="Sonraki"
       >
         <ChevronRight class="h-6 w-6" />
       </button>

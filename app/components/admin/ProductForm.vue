@@ -639,6 +639,7 @@ const weightUnits = [
                 size="icon"
                 class="h-8 w-8"
                 @click="removeGalleryImage(index)"
+                aria-label="Resmi sil"
               >
                 <Trash2 class="h-4 w-4" />
               </Button>
@@ -869,6 +870,7 @@ const weightUnits = [
                     size="sm"
                     class="text-destructive"
                     @click="removeAttribute(attrName)"
+                    aria-label="Özelliği sil"
                   >
                     <Trash2 class="h-4 w-4" />
                   </Button>
@@ -935,6 +937,7 @@ const weightUnits = [
                         type="button"
                         class="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                         @click="newOptionImage = null"
+                        aria-label="Resmi sil"
                       >
                         <Trash2 class="h-2.5 w-2.5" />
                       </button>
@@ -1194,6 +1197,7 @@ const weightUnits = [
                 size="icon"
                 class="text-destructive h-9 w-9"
                 @click="removeVariant(index)"
+                aria-label="Varyantı sil"
               >
                 <Trash2 class="h-4 w-4" />
               </Button>

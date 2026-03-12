@@ -95,7 +95,7 @@ async function handleLogout() {
         <!-- Right Actions -->
         <div class="flex items-center gap-2">
           <!-- Search -->
-          <Button variant="ghost" size="icon" @click="searchOpen = !searchOpen">
+          <Button variant="ghost" size="icon" @click="searchOpen = !searchOpen" aria-label="Arama">
             <Search class="h-5 w-5" />
           </Button>
 
