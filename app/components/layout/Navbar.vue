@@ -95,13 +95,13 @@ async function handleLogout() {
         <!-- Right Actions -->
         <div class="flex items-center gap-2">
           <!-- Search -->
-          <Button variant="ghost" size="icon" @click="searchOpen = !searchOpen">
+          <Button variant="ghost" size="icon" aria-label="Arama" @click="searchOpen = !searchOpen">
             <Search class="h-5 w-5" />
           </Button>
 
           <!-- Wishlist -->
           <NuxtLink to="/account/wishlist">
-            <Button variant="ghost" size="icon" class="relative">
+            <Button variant="ghost" size="icon" aria-label="Favorilerim" class="relative">
               <Heart class="h-5 w-5" />
               <span
                 v-if="wishlistCount > 0"
@@ -119,7 +119,7 @@ async function handleLogout() {
           <div v-if="session" class="hidden sm:block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" aria-label="Hesabım Menüsü">
                   <User class="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -166,6 +166,8 @@ async function handleLogout() {
             variant="ghost"
             size="icon"
             class="md:hidden"
+            :aria-expanded="mobileMenuOpen"
+            :aria-label="mobileMenuOpen ? 'Menüyü kapat' : 'Menüyü aç'"
             @click="mobileMenuOpen = !mobileMenuOpen"
           >
             <Menu v-if="!mobileMenuOpen" class="h-5 w-5" />
