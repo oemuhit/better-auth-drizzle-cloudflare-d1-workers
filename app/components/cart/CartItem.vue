@@ -101,6 +101,7 @@ const variantInfo = computed(() => {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Ürünü sil"
           class="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
           :disabled="isLoading"
           @click="handleRemove"
@@ -115,6 +116,7 @@ const variantInfo = computed(() => {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Miktarı azalt"
             class="h-8 w-8 rounded-full"
             :disabled="isLoading || localQuantity <= 1"
             @click="handleQuantityChange(localQuantity - 1)"
@@ -127,6 +129,7 @@ const variantInfo = computed(() => {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Miktarı artır"
             class="h-8 w-8 rounded-full"
             :disabled="isLoading"
             @click="handleQuantityChange(localQuantity + 1)"
